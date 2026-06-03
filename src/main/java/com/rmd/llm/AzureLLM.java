@@ -27,22 +27,8 @@ public class AzureLLM {
     }
 
     public Map<String, Object> decide(Map<String, Object> ctx) {
-        String prediction = String.valueOf(ctx.get("prediction"));
-        double rmd = Double.parseDouble(ctx.getOrDefault("rmdAmount", "0").toString());
-
-        String prompt = String.format(
-            "IRA RMD advisor. Market: %s, RMD: $%.0f. " +
-            "Reply: 'sell' or 'in_kind' then dash then one short reason.",
-            prediction, rmd
-        );
-
-        try {
-            Map<String, Object> body = Map.of("model", ollamaModel, "prompt", prompt, "stream", false);
-            Map response = restTemplate.postForObject(ollamaUrl, body, Map.class);
-            return parseOllamaResponse(String.valueOf(response.get("response")).trim());
-        } catch (Exception e) {
-            return fallback(prediction);
-        }
+        // Rule-based — instant, Ollama reserved for richer reinvestment advice
+        return fallback(String.valueOf(ctx.get("prediction")));
     }
 
     public String chat(String userMessage, String context) {
@@ -111,6 +97,10 @@ public class AzureLLM {
         } catch (Exception e) {
             return fallbackReinvestmentAdvice(rmdAmount, age, suggestions);
         }
+    }
+
+    public String getFallbackReinvestmentAdvice(double rmdAmount, int age, List<Map<String, Object>> suggestions) {
+        return fallbackReinvestmentAdvice(rmdAmount, age, suggestions);
     }
 
     private String fallbackReinvestmentAdvice(double rmdAmount, int age, List<Map<String, Object>> suggestions) {

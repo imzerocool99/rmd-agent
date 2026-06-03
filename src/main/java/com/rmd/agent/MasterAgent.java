@@ -78,19 +78,7 @@ public class MasterAgent {
 		String bondETF = bondService.selectBondETF(ctx);
 		ctx.put("bondETF", bondETF);
 
-		// ── Fire Ollama strategy decision in parallel thread ──────────
-		final Map<String, Object> ctxSnapshot = new HashMap<>(ctx);
-		java.util.concurrent.CompletableFuture<Map<String, Object>> llmFuture =
-			java.util.concurrent.CompletableFuture.supplyAsync(() -> llm.decide(ctxSnapshot));
-
-		Map<String, Object> llmResult;
-		try {
-			llmResult = llmFuture.get(4, java.util.concurrent.TimeUnit.SECONDS);
-		} catch (Exception e) {
-			llmResult = Map.of("decision", "sell",
-				"reason", "Stable market conditions — generating cash by liquidating underperforming assets.");
-		}
-
+		Map<String, Object> llmResult = llm.decide(ctx);
 		ctx.put("strategy", llmResult.get("decision"));
 		ctx.put("reasoning", llmResult.get("reason"));
 
@@ -251,12 +239,12 @@ public class MasterAgent {
 		double totalAnnualIncome = reinvestmentSuggestions.stream()
 			.mapToDouble(s -> (double) s.get("annualIncome")).sum();
 
-		// Collect Ollama reinvestment advice (2s budget remaining after tax analysis)
+		// Collect Ollama reinvestment advice — fallback to rule-based if timeout
 		String reinvestmentAdvice;
 		try {
 			reinvestmentAdvice = adviceFuture.get(4, java.util.concurrent.TimeUnit.SECONDS);
 		} catch (Exception e) {
-			reinvestmentAdvice = llm.recommendReinvestment(rmdAmount, age, reinvestmentSuggestions);
+			reinvestmentAdvice = llm.getFallbackReinvestmentAdvice(rmdAmount, age, reinvestmentSuggestions);
 		}
 		monitor.log("Agent: reinvestment advice generated");
 
