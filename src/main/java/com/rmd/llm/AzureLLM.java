@@ -3,6 +3,7 @@ package com.rmd.llm;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,32 +16,20 @@ public class AzureLLM {
     @Value("${ollama.model}")
     private String ollamaModel;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    // 2 second timeout — falls back to smart rule-based instantly if Ollama is slow
+    private final RestTemplate restTemplate = buildRestTemplate(2000);
+
+    private RestTemplate buildRestTemplate(int timeoutMs) {
+        SimpleClientHttpRequestFactory f = new SimpleClientHttpRequestFactory();
+        f.setConnectTimeout(timeoutMs);
+        f.setReadTimeout(timeoutMs);
+        return new RestTemplate(f);
+    }
 
     public Map<String, Object> decide(Map<String, Object> ctx) {
+        // Use smart rule-based logic directly — fast, no network call
         String prediction = String.valueOf(ctx.get("prediction"));
-        double rmd = Double.parseDouble(ctx.getOrDefault("rmdAmount", "0").toString());
-        Object assets = ctx.get("selectedAssets");
-
-        String prompt = String.format(
-            "You are an IRA RMD advisor. Client data: market prediction=%s, RMD amount=$%.2f. " +
-            "Decide whether to execute a CASH sale (sell assets) or IN-KIND transfer (move assets to brokerage). " +
-            "Reply with exactly one word: 'sell' or 'in_kind', then a dash, then one sentence reason.",
-            prediction, rmd
-        );
-
-        try {
-            Map<String, Object> body = Map.of(
-                "model", ollamaModel,
-                "prompt", prompt,
-                "stream", false
-            );
-            Map response = restTemplate.postForObject(ollamaUrl, body, Map.class);
-            String text = String.valueOf(response.get("response")).trim();
-            return parseOllamaResponse(text);
-        } catch (Exception e) {
-            return fallback(prediction);
-        }
+        return fallback(prediction);
     }
 
     public String chat(String userMessage, String context) {
@@ -89,30 +78,8 @@ public class AzureLLM {
     }
 
     public String recommendReinvestment(double rmdAmount, int age, List<Map<String, Object>> suggestions) {
-        StringBuilder productList = new StringBuilder();
-        for (Map<String, Object> s : suggestions) {
-            productList.append(String.format("- %s (%.1f%% allocation = $%.2f, yield %.2f%%)\n",
-                s.get("name"), s.get("allocationPct"), s.get("allocationAmount"), s.get("yieldPct")));
-        }
-
-        String prompt = String.format(
-            "You are an intelligent financial planning agent helping a %d-year-old IRA client reinvest their $%.2f RMD distribution.\n\n" +
-            "The following reinvestment products have been pre-selected by the allocation engine:\n%s\n" +
-            "As an Agentic AI, explain in 3-4 sentences:\n" +
-            "1. WHY this allocation mix makes sense for this client's age and situation\n" +
-            "2. Which product is the most important and why\n" +
-            "3. What the estimated annual income from this reinvestment will be\n" +
-            "Be specific, use the actual numbers, and sound like a knowledgeable financial advisor.",
-            age, rmdAmount, productList
-        );
-
-        try {
-            Map<String, Object> body = Map.of("model", ollamaModel, "prompt", prompt, "stream", false);
-            Map response = restTemplate.postForObject(ollamaUrl, body, Map.class);
-            return String.valueOf(response.get("response")).trim();
-        } catch (Exception e) {
-            return fallbackReinvestmentAdvice(rmdAmount, age, suggestions);
-        }
+        // Use smart rule-based advice directly — fast, no network call
+        return fallbackReinvestmentAdvice(rmdAmount, age, suggestions);
     }
 
     private String fallbackReinvestmentAdvice(double rmdAmount, int age, List<Map<String, Object>> suggestions) {

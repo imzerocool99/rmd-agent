@@ -124,45 +124,28 @@ public class MasterAgent {
 		}
 
 		List<Map<String, Object>> portfolio = new ArrayList<>(List.of(
-				// ── US Large-Cap Equities ──────────────────────────────
+				// ── US Equity (2) ─────────────────────────────────────
 				assetOf("AAPL",  "US Equity",            10,  213,   1200),
-				assetOf("MSFT",  "US Equity",             8,  415,   3200),
-				assetOf("GOOGL", "US Equity",             5,  178,   2100),
-				assetOf("JPM",   "US Equity",            12,  205,    850),
-				assetOf("JNJ",   "US Equity",            15,  145,   -320),
-				assetOf("AMZN",  "US Equity",             7,  192,    940),
-				assetOf("NVDA",  "US Equity",             4,  875,   5600),
-				// ── Growth / Volatile ─────────────────────────────────
 				assetOf("TSLA",  "US Equity",             6,  248,  -1800),
-				assetOf("ARKK",  "US Equity",            20,   47,  -1100),
-				// ── International Equities ────────────────────────────
-				assetOf("EFA",   "Intl Equity",          35,   82,    420),
+				// ── International Equity (1) ──────────────────────────
 				assetOf("EEM",   "Intl Equity",          40,   42,   -680),
-				assetOf("VEA",   "Intl Equity",          28,   52,    310),
-				// ── US Fixed Income / Bonds ───────────────────────────
-				assetOf("BND",   "Bond",                 30,   73,    -90),
-				assetOf("AGG",   "Bond",                 25,   96,   -150),
+				// ── Bond / Fixed Income (2) ───────────────────────────
 				assetOf("TLT",   "Bond",                 20,   88,   -420),
 				assetOf("LQD",   "Corporate Bond",       18,  107,   -230),
-				assetOf("HYG",   "High Yield Bond",      22,   74,   -510),
+				// ── Municipal Bond (1) ────────────────────────────────
 				assetOf("MUB",   "Municipal Bond",       16,  104,    180),
-				// ── Real Estate (REITs) ───────────────────────────────
+				// ── High Yield Bond (1) ───────────────────────────────
+				assetOf("HYG",   "High Yield Bond",      22,   74,   -510),
+				// ── Real Estate / REIT (1) ────────────────────────────
 				assetOf("VNQ",   "Real Estate",          14,   82,   -210),
-				assetOf("O",     "Real Estate",          20,   54,    360),
-				assetOf("AMT",   "Real Estate",           8,  195,    720),
-				// ── Commodities ───────────────────────────────────────
+				// ── Commodity (2) ─────────────────────────────────────
 				assetOf("GLD",   "Commodity",            12,  225,   1850),
-				assetOf("SLV",   "Commodity",            30,   24,   -190),
 				assetOf("USO",   "Commodity",            25,   74,   -640),
-				// ── Broad Market ETFs ─────────────────────────────────
+				// ── Broad Market ETF (1) ──────────────────────────────
 				assetOf("VTI",   "US Broad Market ETF",  18,  242,   2800),
-				assetOf("SPY",   "US Broad Market ETF",   6,  530,   4200),
-				assetOf("QQQ",   "US Broad Market ETF",   5,  450,   3100),
-				// ── Sector ETFs ───────────────────────────────────────
-				assetOf("XLE",   "Energy Sector ETF",    22,   88,    380),
+				// ── Sector ETF (1) ────────────────────────────────────
 				assetOf("XLV",   "Healthcare ETF",       16,  140,    620),
-				assetOf("XLF",   "Financial ETF",        28,   41,    290),
-				// ── Cash & Money Market ───────────────────────────────
+				// ── Money Market (1) ──────────────────────────────────
 				assetOf("VMFXX", "Money Market",        100,    1,      0)
 		));
 
