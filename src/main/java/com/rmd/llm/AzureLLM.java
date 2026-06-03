@@ -16,8 +16,8 @@ public class AzureLLM {
     @Value("${ollama.model}")
     private String ollamaModel;
 
-    // 2 second timeout — falls back to smart rule-based instantly if Ollama is slow
-    private final RestTemplate restTemplate = buildRestTemplate(2000);
+    // 4 second timeout — 2s buffer over minimum, falls back to rule-based if exceeded
+    private final RestTemplate restTemplate = buildRestTemplate(4000);
 
     private RestTemplate buildRestTemplate(int timeoutMs) {
         SimpleClientHttpRequestFactory f = new SimpleClientHttpRequestFactory();
@@ -27,9 +27,22 @@ public class AzureLLM {
     }
 
     public Map<String, Object> decide(Map<String, Object> ctx) {
-        // Use smart rule-based logic directly — fast, no network call
         String prediction = String.valueOf(ctx.get("prediction"));
-        return fallback(prediction);
+        double rmd = Double.parseDouble(ctx.getOrDefault("rmdAmount", "0").toString());
+
+        String prompt = String.format(
+            "IRA RMD advisor. Market: %s, RMD: $%.0f. " +
+            "Reply: 'sell' or 'in_kind' then dash then one short reason.",
+            prediction, rmd
+        );
+
+        try {
+            Map<String, Object> body = Map.of("model", ollamaModel, "prompt", prompt, "stream", false);
+            Map response = restTemplate.postForObject(ollamaUrl, body, Map.class);
+            return parseOllamaResponse(String.valueOf(response.get("response")).trim());
+        } catch (Exception e) {
+            return fallback(prediction);
+        }
     }
 
     public String chat(String userMessage, String context) {
@@ -78,8 +91,26 @@ public class AzureLLM {
     }
 
     public String recommendReinvestment(double rmdAmount, int age, List<Map<String, Object>> suggestions) {
-        // Use smart rule-based advice directly — fast, no network call
-        return fallbackReinvestmentAdvice(rmdAmount, age, suggestions);
+        StringBuilder products = new StringBuilder();
+        for (Map<String, Object> s : suggestions) {
+            products.append(String.format("%s %.0f%% $%.0f yield %.1f%%, ",
+                s.get("name"), s.get("allocationPct"), s.get("allocationAmount"), s.get("yieldPct")));
+        }
+
+        String prompt = String.format(
+            "Financial advisor. Client age %d, RMD $%.0f reinvested across: %s. " +
+            "In 2-3 sentences: why this mix suits them and projected income benefit.",
+            age, rmdAmount, products
+        );
+
+        try {
+            Map<String, Object> body = Map.of("model", ollamaModel, "prompt", prompt, "stream", false);
+            Map response = restTemplate.postForObject(ollamaUrl, body, Map.class);
+            String text = String.valueOf(response.get("response")).trim();
+            return text.isEmpty() ? fallbackReinvestmentAdvice(rmdAmount, age, suggestions) : text;
+        } catch (Exception e) {
+            return fallbackReinvestmentAdvice(rmdAmount, age, suggestions);
+        }
     }
 
     private String fallbackReinvestmentAdvice(double rmdAmount, int age, List<Map<String, Object>> suggestions) {

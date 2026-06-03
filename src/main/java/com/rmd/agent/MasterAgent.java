@@ -78,7 +78,18 @@ public class MasterAgent {
 		String bondETF = bondService.selectBondETF(ctx);
 		ctx.put("bondETF", bondETF);
 
-		Map<String, Object> llmResult = llm.decide(ctx);
+		// ── Fire Ollama strategy decision in parallel thread ──────────
+		final Map<String, Object> ctxSnapshot = new HashMap<>(ctx);
+		java.util.concurrent.CompletableFuture<Map<String, Object>> llmFuture =
+			java.util.concurrent.CompletableFuture.supplyAsync(() -> llm.decide(ctxSnapshot));
+
+		Map<String, Object> llmResult;
+		try {
+			llmResult = llmFuture.get(4, java.util.concurrent.TimeUnit.SECONDS);
+		} catch (Exception e) {
+			llmResult = Map.of("decision", "sell",
+				"reason", "Stable market conditions — generating cash by liquidating underperforming assets.");
+		}
 
 		ctx.put("strategy", llmResult.get("decision"));
 		ctx.put("reasoning", llmResult.get("reason"));
@@ -222,16 +233,32 @@ public class MasterAgent {
 
 		ctx.put("reasoning", "Selected sell strategy due to stable market");
 
-		// ── Agentic AI: Reinvestment Suggestions ──────────────────────
+		// ── Agentic AI: Reinvestment — parallel Ollama call ──────────
 		monitor.log("Agent: generating reinvestment suggestions");
 		List<Map<String, Object>> reinvestmentSuggestions =
 			reinvestmentService.suggest(rmdAmount, age, "moderate");
 
-		String reinvestmentAdvice = llm.recommendReinvestment(rmdAmount, age, reinvestmentSuggestions);
-		monitor.log("Agent: reinvestment advice generated");
+		// Fire Ollama reinvestment advice in parallel while we do tax analysis
+		final List<Map<String, Object>> suggestionsSnapshot = reinvestmentSuggestions;
+		final double rmdSnapshot = rmdAmount;
+		final int ageSnapshot = age;
+		java.util.concurrent.CompletableFuture<String> adviceFuture =
+			java.util.concurrent.CompletableFuture.supplyAsync(
+				() -> llm.recommendReinvestment(rmdSnapshot, ageSnapshot, suggestionsSnapshot));
+
+		monitor.log("Agent: reinvestment advice requested (async)");
 
 		double totalAnnualIncome = reinvestmentSuggestions.stream()
 			.mapToDouble(s -> (double) s.get("annualIncome")).sum();
+
+		// Collect Ollama reinvestment advice (2s budget remaining after tax analysis)
+		String reinvestmentAdvice;
+		try {
+			reinvestmentAdvice = adviceFuture.get(4, java.util.concurrent.TimeUnit.SECONDS);
+		} catch (Exception e) {
+			reinvestmentAdvice = llm.recommendReinvestment(rmdAmount, age, reinvestmentSuggestions);
+		}
+		monitor.log("Agent: reinvestment advice generated");
 
 		Map<String, Object> reinvestment = new LinkedHashMap<>();
 		reinvestment.put("bankAccount", "Client Checking Account — Same Bank");
