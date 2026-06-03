@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.util.*;
+import java.util.LinkedHashMap;
 import com.rmd.logic.*;
 import com.rmd.llm.AzureLLM;
 import com.rmd.memory.MemoryService;
@@ -14,6 +15,9 @@ import com.rmd.monitor.MonitorService;
 
 @Service
 public class MasterAgent {
+	@Autowired
+	ReinvestmentSuggestionService reinvestmentService;
+
 	@Autowired
 	AssetRankingService ranking;
 	@Autowired
@@ -235,14 +239,87 @@ public class MasterAgent {
 
 		ctx.put("reasoning", "Selected sell strategy due to stable market");
 
-		Map<String, Object> response = new HashMap<>();
+		// ── Agentic AI: Reinvestment Suggestions ──────────────────────
+		monitor.log("Agent: generating reinvestment suggestions");
+		List<Map<String, Object>> reinvestmentSuggestions =
+			reinvestmentService.suggest(rmdAmount, age, "moderate");
 
-		response.put("rmdAmount", ctx.get("rmdAmount"));
-		response.put("strategy", ctx.get("strategy"));
+		String reinvestmentAdvice = llm.recommendReinvestment(rmdAmount, age, reinvestmentSuggestions);
+		monitor.log("Agent: reinvestment advice generated");
+
+		double totalAnnualIncome = reinvestmentSuggestions.stream()
+			.mapToDouble(s -> (double) s.get("annualIncome")).sum();
+
+		Map<String, Object> reinvestment = new LinkedHashMap<>();
+		reinvestment.put("bankAccount", "Client Checking Account — Same Bank");
+		reinvestment.put("totalAmount", rmdAmount);
+		reinvestment.put("totalAnnualIncome", Math.round(totalAnnualIncome * 100.0) / 100.0);
+		reinvestment.put("agentAdvice", reinvestmentAdvice);
+		reinvestment.put("suggestions", reinvestmentSuggestions);
+
+		// ── Tax Efficiency Analysis ───────────────────────────────────
+		List<Map<String, Object>> portfolioList = (List<Map<String, Object>>) ctx.get("portfolio");
+		List<Map<String, Object>> selectedList  = (List<Map<String, Object>>) ctx.get("selectedAssets");
+
+		// Naive worst-case: sort by highest gain (what an unintelligent system would pick)
+		List<Map<String, Object>> naiveSorted = new ArrayList<>(portfolioList);
+		naiveSorted.sort((a, b) -> Double.compare(
+			Double.parseDouble(b.get("gain").toString()),
+			Double.parseDouble(a.get("gain").toString())
+		));
+
+		double naiveGain = 0, smartGain = 0;
+		double naiveRemaining = rmdAmount;
+		List<Map<String, Object>> naiveAssets = new ArrayList<>();
+		for (Map<String, Object> a : naiveSorted) {
+			double price   = Double.parseDouble(a.get("price").toString());
+			int availQty   = Integer.parseInt(a.get("qty").toString());
+			int toSell     = (int) Math.min(availQty, Math.floor(naiveRemaining / price));
+			if (toSell > 0) {
+				double gain = Double.parseDouble(a.get("gain").toString());
+				double gainPerShare = availQty > 0 ? gain / availQty : 0;
+				naiveGain += gainPerShare * toSell;
+				naiveAssets.add(Map.of("symbol", a.get("symbol"), "qty", toSell,
+					"price", price, "gain", Math.round(gainPerShare * toSell * 100.0) / 100.0));
+				naiveRemaining -= toSell * price;
+			}
+			if (naiveRemaining <= 0) break;
+		}
+
+		for (Map<String, Object> a : selectedList) {
+			Object gainObj = a.get("gain");
+			if (gainObj != null) smartGain += Double.parseDouble(gainObj.toString());
+		}
+
+		double TAX_RATE       = 0.24;
+		double naiveTaxBill   = Math.max(0, naiveGain) * TAX_RATE;
+		double smartTaxBill   = Math.max(0, smartGain) * TAX_RATE;
+		double taxSaved       = Math.max(0, naiveTaxBill - smartTaxBill);
+
+		Map<String, Object> taxAnalysis = new LinkedHashMap<>();
+		taxAnalysis.put("naiveGain",        Math.round(naiveGain  * 100.0) / 100.0);
+		taxAnalysis.put("smartGain",        Math.round(smartGain  * 100.0) / 100.0);
+		taxAnalysis.put("naiveTaxBill",     Math.round(naiveTaxBill * 100.0) / 100.0);
+		taxAnalysis.put("smartTaxBill",     Math.round(smartTaxBill * 100.0) / 100.0);
+		taxAnalysis.put("taxSaved",         Math.round(taxSaved    * 100.0) / 100.0);
+		taxAnalysis.put("taxRatePct",       (int)(TAX_RATE * 100));
+		taxAnalysis.put("naiveAssets",      naiveAssets);
+		taxAnalysis.put("optimizedAssets",  selectedList);
+		taxAnalysis.put("savingsExplanation",
+			String.format("By liquidating assets with losses (%.2f realized gain) instead of highest-gain assets " +
+				"(%.2f realized gain), the agent saved $%.2f in taxes at the %.0f%% rate.",
+				smartGain, naiveGain, taxSaved, TAX_RATE * 100));
+		monitor.log("Agent: tax savings calculated — $" + taxSaved + " saved vs naive approach");
+
+		Map<String, Object> response = new HashMap<>();
+		response.put("rmdAmount",      ctx.get("rmdAmount"));
+		response.put("strategy",       ctx.get("strategy"));
 		response.put("selectedAssets", ctx.get("selectedAssets"));
-		response.put("reasoning", ctx.get("reasoning"));
-		response.put("explanation", ctx.get("explanation"));
-		response.put("portfolio", ctx.get("portfolio"));
+		response.put("reasoning",      ctx.get("reasoning"));
+		response.put("explanation",    ctx.get("explanation"));
+		response.put("portfolio",      ctx.get("portfolio"));
+		response.put("reinvestment",   reinvestment);
+		response.put("taxAnalysis",    taxAnalysis);
 
 		return response;
 

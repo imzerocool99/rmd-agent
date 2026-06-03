@@ -1,5 +1,6 @@
 package com.rmd.llm;
 
+import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -85,6 +86,49 @@ public class AzureLLM {
         }
         return Map.of("decision", "sell",
             "reason", "Stable market conditions — generating cash by liquidating underperforming and over-concentrated assets.");
+    }
+
+    public String recommendReinvestment(double rmdAmount, int age, List<Map<String, Object>> suggestions) {
+        StringBuilder productList = new StringBuilder();
+        for (Map<String, Object> s : suggestions) {
+            productList.append(String.format("- %s (%.1f%% allocation = $%.2f, yield %.2f%%)\n",
+                s.get("name"), s.get("allocationPct"), s.get("allocationAmount"), s.get("yieldPct")));
+        }
+
+        String prompt = String.format(
+            "You are an intelligent financial planning agent helping a %d-year-old IRA client reinvest their $%.2f RMD distribution.\n\n" +
+            "The following reinvestment products have been pre-selected by the allocation engine:\n%s\n" +
+            "As an Agentic AI, explain in 3-4 sentences:\n" +
+            "1. WHY this allocation mix makes sense for this client's age and situation\n" +
+            "2. Which product is the most important and why\n" +
+            "3. What the estimated annual income from this reinvestment will be\n" +
+            "Be specific, use the actual numbers, and sound like a knowledgeable financial advisor.",
+            age, rmdAmount, productList
+        );
+
+        try {
+            Map<String, Object> body = Map.of("model", ollamaModel, "prompt", prompt, "stream", false);
+            Map response = restTemplate.postForObject(ollamaUrl, body, Map.class);
+            return String.valueOf(response.get("response")).trim();
+        } catch (Exception e) {
+            return fallbackReinvestmentAdvice(rmdAmount, age, suggestions);
+        }
+    }
+
+    private String fallbackReinvestmentAdvice(double rmdAmount, int age, List<Map<String, Object>> suggestions) {
+        double totalIncome = suggestions.stream()
+            .mapToDouble(s -> (double) s.get("annualIncome")).sum();
+        String topProduct = suggestions.isEmpty() ? "High-Yield Savings" :
+            String.valueOf(suggestions.get(0).get("name"));
+
+        return String.format(
+            "Based on your age (%d) and RMD amount of $%.2f, the agent has allocated your distribution across %d products " +
+            "prioritizing capital preservation, tax efficiency, and income generation. " +
+            "The top recommendation is %s, which offers the best balance of safety and yield for your profile. " +
+            "This reinvestment plan is projected to generate approximately $%.2f in annual income, " +
+            "ensuring your RMD continues working for you rather than sitting idle in a checking account.",
+            age, rmdAmount, suggestions.size(), topProduct, totalIncome
+        );
     }
 
     private String smartFallbackChat(String question) {
