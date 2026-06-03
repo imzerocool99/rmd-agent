@@ -41,6 +41,16 @@ public class MasterAgent {
 	@Value("${trade.max.qty}")
 	private int maxQty;
 
+	private Map<String, Object> assetOf(String symbol, String assetClass, int qty, double price, double gain) {
+		Map<String, Object> m = new HashMap<>();
+		m.put("symbol", symbol);
+		m.put("assetClass", assetClass);
+		m.put("qty", qty);
+		m.put("price", price);
+		m.put("gain", gain);
+		return m;
+	}
+
 	public Map<String, Object> run(Map<String, Object> ctx) {
 		int age = (int) ctx.getOrDefault("age", 72);
 		double balance = Double.parseDouble(ctx.getOrDefault("balance", "100000").toString());
@@ -109,9 +119,48 @@ public class MasterAgent {
 			return Map.of("error", "limit_exceeded");
 		}
 
-		List<Map<String, Object>> portfolio = List.of(Map.of("symbol", "AAPL", "qty", 10, "gain", 500, "price", 180),
-				Map.of("symbol", "TSLA", "qty", 5, "gain", -200, "price", 700),
-				Map.of("symbol", "BND", "qty", 20, "gain", 50, "price", 80));
+		List<Map<String, Object>> portfolio = new ArrayList<>(List.of(
+				// ── US Large-Cap Equities ──────────────────────────────
+				assetOf("AAPL",  "US Equity",            10,  213,   1200),
+				assetOf("MSFT",  "US Equity",             8,  415,   3200),
+				assetOf("GOOGL", "US Equity",             5,  178,   2100),
+				assetOf("JPM",   "US Equity",            12,  205,    850),
+				assetOf("JNJ",   "US Equity",            15,  145,   -320),
+				assetOf("AMZN",  "US Equity",             7,  192,    940),
+				assetOf("NVDA",  "US Equity",             4,  875,   5600),
+				// ── Growth / Volatile ─────────────────────────────────
+				assetOf("TSLA",  "US Equity",             6,  248,  -1800),
+				assetOf("ARKK",  "US Equity",            20,   47,  -1100),
+				// ── International Equities ────────────────────────────
+				assetOf("EFA",   "Intl Equity",          35,   82,    420),
+				assetOf("EEM",   "Intl Equity",          40,   42,   -680),
+				assetOf("VEA",   "Intl Equity",          28,   52,    310),
+				// ── US Fixed Income / Bonds ───────────────────────────
+				assetOf("BND",   "Bond",                 30,   73,    -90),
+				assetOf("AGG",   "Bond",                 25,   96,   -150),
+				assetOf("TLT",   "Bond",                 20,   88,   -420),
+				assetOf("LQD",   "Corporate Bond",       18,  107,   -230),
+				assetOf("HYG",   "High Yield Bond",      22,   74,   -510),
+				assetOf("MUB",   "Municipal Bond",       16,  104,    180),
+				// ── Real Estate (REITs) ───────────────────────────────
+				assetOf("VNQ",   "Real Estate",          14,   82,   -210),
+				assetOf("O",     "Real Estate",          20,   54,    360),
+				assetOf("AMT",   "Real Estate",           8,  195,    720),
+				// ── Commodities ───────────────────────────────────────
+				assetOf("GLD",   "Commodity",            12,  225,   1850),
+				assetOf("SLV",   "Commodity",            30,   24,   -190),
+				assetOf("USO",   "Commodity",            25,   74,   -640),
+				// ── Broad Market ETFs ─────────────────────────────────
+				assetOf("VTI",   "US Broad Market ETF",  18,  242,   2800),
+				assetOf("SPY",   "US Broad Market ETF",   6,  530,   4200),
+				assetOf("QQQ",   "US Broad Market ETF",   5,  450,   3100),
+				// ── Sector ETFs ───────────────────────────────────────
+				assetOf("XLE",   "Energy Sector ETF",    22,   88,    380),
+				assetOf("XLV",   "Healthcare ETF",       16,  140,    620),
+				assetOf("XLF",   "Financial ETF",        28,   41,    290),
+				// ── Cash & Money Market ───────────────────────────────
+				assetOf("VMFXX", "Money Market",        100,    1,      0)
+		));
 
 		ctx.put("portfolio", portfolio);
 		List<Map<String, Object>> selectedAssets = assetSelector.selectAssetsForRMD(ctx);
