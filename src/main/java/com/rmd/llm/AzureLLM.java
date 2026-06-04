@@ -27,7 +27,13 @@ public class AzureLLM {
     }
 
     public Map<String, Object> decide(Map<String, Object> ctx) {
-        // Rule-based — instant, Ollama reserved for richer reinvestment advice
+        String preference = String.valueOf(ctx.getOrDefault("preference", "sell"));
+        // Client's explicit preference always takes priority
+        if ("in_kind".equalsIgnoreCase(preference)) {
+            return Map.of("decision", "in_kind",
+                "reason", "Client preference: In-Kind Transfer — shares moved directly to taxable brokerage, preserving full market exposure without liquidation.");
+        }
+        // For cash preference, use market prediction (volatile market may suggest in-kind override)
         return fallback(String.valueOf(ctx.get("prediction")));
     }
 
