@@ -45,6 +45,30 @@ public class AgentController {
         return portfolio.getPositions();
     }
 
+    @GetMapping(value = "/catalyst", produces = "application/json")
+    public List<Map<String, Object>> catalyst(@RequestParam(required = false) String symbols) {
+        if (symbols == null || symbols.isBlank()) {
+            return Collections.emptyList();
+        }
+        var symbolList = Arrays.stream(symbols.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        return portfolio.getCatalyst(symbolList);
+    }
+
+    @GetMapping(value = "/news", produces = "application/json")
+    public List<Map<String, Object>> news(@RequestParam(required = false) String symbols) {
+        if (symbols == null || symbols.isBlank()) {
+            return Collections.emptyList();
+        }
+        var symbolList = Arrays.stream(symbols.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        return portfolio.getNews(symbolList);
+    }
+
     public AgentController(MasterAgent a) {
         this.a = a;
     }
