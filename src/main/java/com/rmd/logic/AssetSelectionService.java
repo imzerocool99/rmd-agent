@@ -80,10 +80,13 @@ public class AssetSelectionService {
 			if (qtyToSell > 0) {
 
 				Map<String, Object> trade = new HashMap<>();
-				trade.put("symbol", asset.get("symbol"));
-				trade.put("qty", qtyToSell);
-				trade.put("price", price);
-				trade.put("value", qtyToSell * price);
+				trade.put("symbol",     asset.get("symbol"));
+				trade.put("qty",        qtyToSell);
+				trade.put("price",      price);
+				trade.put("value",      qtyToSell * price);
+				trade.put("gain",       asset.get("gain"));
+				trade.put("assetClass", asset.get("assetClass"));
+				trade.put("account",    asset.get("account"));
 
 				selected.add(trade);
 
@@ -99,8 +102,15 @@ public class AssetSelectionService {
 		// ✅ Optional: small remainder handling
 		if (remaining > 0) {
 			Map<String, Object> fallback = scoredPortfolio.get(0);
-			selected.add(Map.of("symbol", fallback.get("symbol"), "qty", 1, "price", fallback.get("price"), "value",
-					fallback.get("price")));
+			Map<String, Object> fb = new HashMap<>();
+			fb.put("symbol",     fallback.get("symbol"));
+			fb.put("qty",        1);
+			fb.put("price",      fallback.get("price"));
+			fb.put("value",      fallback.get("price"));
+			fb.put("gain",       fallback.get("gain"));
+			fb.put("assetClass", fallback.get("assetClass"));
+			fb.put("account",    fallback.get("account"));
+			selected.add(fb);
 		}
 
 		return selected;
