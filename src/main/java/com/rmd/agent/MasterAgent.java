@@ -198,18 +198,67 @@ public class MasterAgent {
 					"Asset moved from IRA to brokerage (conceptual)"));
 		}
 
-		String explanation = "RMD matched using optimized quantities: ";
+		// ── Rich Explanation ─────────────────────────────────────
+		List<Map<String, Object>> selectedList2 = (List<Map<String, Object>>) ctx.get("selectedAssets");
+		List<Map<String, Object>> fullPortfolio = (List<Map<String, Object>>) ctx.get("portfolio");
+		double totalSold = 0;
+		StringBuilder explanation = new StringBuilder();
 
-		double total = 0;
+		explanation.append("SELECTION CRITERIA: The agent scores every holding using a tax-efficiency formula: ");
+		explanation.append("Score = -(Unrealized Gain/Loss). ");
+		explanation.append("Assets with the largest losses score highest and are liquidated first — ");
+		explanation.append("this minimizes taxable gains and maximizes tax-loss harvesting benefit.\n\n");
 
-		for (Map<String, Object> t : (List<Map<String, Object>>) ctx.get("selectedAssets")) {
-			explanation += t.get("symbol") + ": " + t.get("qty") + " shares, ";
-			total += Double.parseDouble(t.get("value").toString());
+		explanation.append("SELECTED FOR LIQUIDATION:\n");
+		for (Map<String, Object> t : selectedList2) {
+			double price   = Double.parseDouble(t.get("price").toString());
+			int sellQty    = Integer.parseInt(t.get("qty").toString());
+			double value   = sellQty * price;
+			totalSold     += value;
+
+			// Find gain from full portfolio
+			double gain = 0;
+			String assetClass = "";
+			for (Map<String, Object> p : fullPortfolio) {
+				if (p.get("symbol").equals(t.get("symbol"))) {
+					gain       = Double.parseDouble(p.get("gain").toString());
+					assetClass = String.valueOf(p.getOrDefault("assetClass", ""));
+					break;
+				}
+			}
+			String reason = gain < 0
+				? String.format("Unrealized loss of $%.0f — selling locks in a tax loss", gain)
+				: gain == 0
+					? "Neutral position — no tax impact on sale"
+					: String.format("Small gain of $%.0f — minimal tax impact", gain);
+
+			explanation.append(String.format("  • %s (%s): Sell %d shares @ $%.0f = $%.0f | %s\n",
+				t.get("symbol"), assetClass, sellQty, price, value, reason));
 		}
 
-		explanation += "Total value: " + total;
+		// Assets spared
+		explanation.append("\nPROTECTED (NOT liquidated):\n");
+		for (Map<String, Object> p : fullPortfolio) {
+			boolean wasSelected = selectedList2.stream()
+				.anyMatch(s -> s.get("symbol").equals(p.get("symbol")));
+			if (!wasSelected) {
+				double gain = Double.parseDouble(p.get("gain").toString());
+				if (gain > 500) {
+					explanation.append(String.format("  • %s: Protected — unrealized gain of $%.0f, selling would trigger a large tax bill\n",
+						p.get("symbol"), gain));
+				}
+			}
+		}
 
-		ctx.put("explanation", explanation);
+		explanation.append(String.format("\nRESULT: Total liquidated $%.2f vs RMD required $%.2f. ",
+			totalSold, rmdAmount));
+		if (totalSold >= rmdAmount) {
+			explanation.append("RMD fully satisfied. ✓");
+		} else {
+			explanation.append(String.format("Shortfall of $%.2f covered by remainder share.", rmdAmount - totalSold));
+		}
+
+		ctx.put("explanation", explanation.toString());
 		// memory.save(clientId, ctx);
 		monitor.log("Agent end");
 

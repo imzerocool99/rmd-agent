@@ -61,7 +61,8 @@ public class AssetSelectionService {
 			scoredPortfolio.add(assetCopy);
 		}
 
-		scoredPortfolio.sort(Comparator.comparingDouble(a -> (double) a.get("score")));
+		// Descending — highest score (biggest loss) sold first
+		scoredPortfolio.sort((a, b) -> Double.compare((double) b.get("score"), (double) a.get("score")));
 
 		List<Map<String, Object>> selected = new ArrayList<>();
 
