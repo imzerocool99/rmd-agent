@@ -55,6 +55,64 @@ public class MasterAgent {
 		return m;
 	}
 
+	// ── Per-account portfolio definitions ──────────────────────────────
+	private List<Map<String, Object>> getPortfolioForAccount(String accountId) {
+		switch (accountId) {
+			case "IRA-001-B": // Robert & Margaret Chen — Rollover IRA (conservative, bond-heavy)
+				return new ArrayList<>(List.of(
+					assetOf("BND",   "Bond",                50,  74,  -220),
+					assetOf("GOVT",  "Bond",                40,  24,  -180),
+					assetOf("TIP",   "Bond",                30, 110,  -350),
+					assetOf("SCHD",  "US Broad Market ETF", 25,  82,   620),
+					assetOf("JNJ",   "Healthcare",          10, 155,  -280),
+					assetOf("PG",    "Consumer Staples",     8, 168,   820),
+					assetOf("VYM",   "US Broad Market ETF", 20, 119,   410),
+					assetOf("AGG",   "Corporate Bond",      35,  98,  -150),
+					assetOf("VMFXX", "Money Market",       100,   1,     0)
+				));
+			case "IRA-002-A": // William & Dorothy Davis — Traditional IRA (large balanced)
+				return new ArrayList<>(List.of(
+					assetOf("SPY",   "US Broad Market ETF", 12, 485,  3200),
+					assetOf("QQQ",   "US Equity",            8, 420,  2100),
+					assetOf("KO",    "Consumer Staples",    30,  62,  -420),
+					assetOf("XOM",   "Energy",              20, 118,  -680),
+					assetOf("PFE",   "Healthcare",          40,  27, -1200),
+					assetOf("VZ",    "Telecom",             35,  41,  -890),
+					assetOf("AGG",   "Corporate Bond",      25,  98,  -230),
+					assetOf("SHY",   "Bond",                30,  82,  -110),
+					assetOf("GLD",   "Commodity",           10, 225,   780),
+					assetOf("AAPL",  "US Equity",            6, 213,   960),
+					assetOf("VMFXX", "Money Market",       150,   1,     0)
+				));
+			default: // IRA-001-A — Robert & Margaret Chen Traditional IRA + all other accounts
+				return new ArrayList<>(List.of(
+					assetOf("AAPL",  "US Equity",            10, 213,  1200),
+					assetOf("TSLA",  "US Equity",             6, 248, -1800),
+					assetOf("EEM",   "Intl Equity",          40,  42,  -680),
+					assetOf("TLT",   "Bond",                 20,  88,  -420),
+					assetOf("LQD",   "Corporate Bond",       18, 107,  -230),
+					assetOf("MUB",   "Municipal Bond",       16, 104,   180),
+					assetOf("HYG",   "High Yield Bond",      22,  74,  -510),
+					assetOf("VNQ",   "Real Estate",          14,  82,  -210),
+					assetOf("GLD",   "Commodity",            12, 225,  1850),
+					assetOf("USO",   "Commodity",            25,  74,  -640),
+					assetOf("VTI",   "US Broad Market ETF",  18, 242,  2800),
+					assetOf("XLV",   "Healthcare ETF",       16, 140,   620),
+					assetOf("VMFXX", "Money Market",        100,   1,     0)
+				));
+		}
+	}
+
+	// ── Account-label helper ─────────────────────────────────────────────
+	private String accountLabelFor(String accountId) {
+		switch (accountId) {
+			case "IRA-001-A": return "Traditional IRA";
+			case "IRA-001-B": return "Rollover IRA";
+			case "IRA-002-A": return "Traditional IRA (Davis)";
+			default:          return accountId;
+		}
+	}
+
 	public Map<String, Object> run(Map<String, Object> ctx) {
 		int age = (int) ctx.getOrDefault("age", 72);
 		double balance = Double.parseDouble(ctx.getOrDefault("balance", "100000").toString());
@@ -65,8 +123,15 @@ public class MasterAgent {
 
 		monitor.log("Calculated RMD: " + rmd);
 
-		String clientId = (String) ctx.getOrDefault("clientId", "default");
-		monitor.log("Agent start");
+		// Parse clientId format: "client_001/IRA-001-A" or plain "client_001"
+		String rawClientId = (String) ctx.getOrDefault("clientId", "default");
+		String[] parts    = rawClientId.split("/", 2);
+		String clientId   = parts[0];
+		String accountId  = parts.length > 1 ? parts[1] : "IRA-001-A";
+		ctx.put("accountId", accountId);
+		ctx.put("accountLabel", accountLabelFor(accountId));
+
+		monitor.log("Agent start — client: " + clientId + " | account: " + accountId);
 		ctx.put("history", memory.get(clientId));
 		ctx.put("ranking", ranking.rank(ctx));
 		ctx.put("tax", tax.optimize(ctx));
@@ -122,31 +187,10 @@ public class MasterAgent {
 			return Map.of("error", "limit_exceeded");
 		}
 
-		List<Map<String, Object>> portfolio = new ArrayList<>(List.of(
-				// ── US Equity (2) ─────────────────────────────────────
-				assetOf("AAPL",  "US Equity",            10,  213,   1200),
-				assetOf("TSLA",  "US Equity",             6,  248,  -1800),
-				// ── International Equity (1) ──────────────────────────
-				assetOf("EEM",   "Intl Equity",          40,   42,   -680),
-				// ── Bond / Fixed Income (2) ───────────────────────────
-				assetOf("TLT",   "Bond",                 20,   88,   -420),
-				assetOf("LQD",   "Corporate Bond",       18,  107,   -230),
-				// ── Municipal Bond (1) ────────────────────────────────
-				assetOf("MUB",   "Municipal Bond",       16,  104,    180),
-				// ── High Yield Bond (1) ───────────────────────────────
-				assetOf("HYG",   "High Yield Bond",      22,   74,   -510),
-				// ── Real Estate / REIT (1) ────────────────────────────
-				assetOf("VNQ",   "Real Estate",          14,   82,   -210),
-				// ── Commodity (2) ─────────────────────────────────────
-				assetOf("GLD",   "Commodity",            12,  225,   1850),
-				assetOf("USO",   "Commodity",            25,   74,   -640),
-				// ── Broad Market ETF (1) ──────────────────────────────
-				assetOf("VTI",   "US Broad Market ETF",  18,  242,   2800),
-				// ── Sector ETF (1) ────────────────────────────────────
-				assetOf("XLV",   "Healthcare ETF",       16,  140,    620),
-				// ── Money Market (1) ──────────────────────────────────
-				assetOf("VMFXX", "Money Market",        100,    1,      0)
-		));
+		List<Map<String, Object>> portfolio = getPortfolioForAccount(accountId);
+		// Tag every asset with which account it belongs to
+		String acctLabel = accountLabelFor(accountId);
+		portfolio.forEach(a -> a.put("account", acctLabel));
 
 		ctx.put("portfolio", portfolio);
 		List<Map<String, Object>> selectedAssets = assetSelector.selectAssetsForRMD(ctx);
