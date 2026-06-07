@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RMD Agent — Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',sans-serif;font-size:13px}
+a{color:#7EC8F5;text-decoration:none}
+
+/* ── TOPBAR ── */
+.topbar{background:#161b22;border-bottom:1px solid #21262d;padding:0 24px;height:50px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.tb-logo{font-size:14px;font-weight:800}.tb-logo span{color:#7EC8F5}
+.tb-badge{font-size:10px;font-weight:700;background:#3d1f00;color:#f59e0b;border:1px solid #f59e0b40;
+  padding:3px 12px;border-radius:20px;letter-spacing:.5px}
+.tb-status{display:flex;align-items:center;gap:6px;font-size:11px;color:#8b949e}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#484f58}
+.status-dot.up{background:#4ade80;box-shadow:0 0 6px #4ade8060}
+.status-dot.down{background:#f85149}
+
+/* ── NAV TABS ── */
+.nav{background:#161b22;border-bottom:1px solid #21262d;display:flex;padding:0 24px;gap:2px}
+.tab{padding:12px 18px;font-size:12px;font-weight:600;color:#484f58;cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .2s}
+.tab:hover{color:#c9d1d9}
+.tab.active{color:#7EC8F5;border-bottom-color:#7EC8F5}
+
+/* ── LAYOUT ── */
+.content{max-width:1200px;margin:0 auto;padding:24px}
+.panel{display:none}.panel.active{display:block}
+
+/* ── CARDS ── */
+.card{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:20px;margin-bottom:16px}
+.card-title{font-size:11px;font-weight:700;color:#7EC8F5;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px}
+
+/* ── HEALTH GRID ── */
+.health-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.health-card{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:16px;text-align:center}
+.hc-icon{font-size:24px;margin-bottom:8px}
+.hc-label{font-size:11px;color:#8b949e;margin-bottom:4px}
+.hc-value{font-size:14px;font-weight:700;color:#e6edf3}
+.hc-sub{font-size:10px;color:#484f58;margin-top:4px}
+
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat-box{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;text-align:center}
+.stat-num{font-size:22px;font-weight:800;color:#7EC8F5}
+.stat-lbl{font-size:10px;color:#484f58;margin-top:4px}
+
+/* ── TWO COL ── */
+.two-col{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start}
+
+/* ── DOC LIST ── */
+.doc-list{background:#0d1117;border:1px solid #21262d;border-radius:8px;overflow:hidden;max-height:600px;overflow-y:auto}
+.doc-list-header{padding:10px 14px;font-size:10px;font-weight:700;color:#484f58;
+  text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #21262d;
+  display:flex;justify-content:space-between;align-items:center}
+.doc-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid #161b22;transition:background .15s}
+.doc-item:hover{background:#161b22}
+.doc-item.selected{background:#0d1a2e;border-left:2px solid #7EC8F5}
+.di-title{font-size:11px;font-weight:600;color:#c9d1d9;margin-bottom:3px}
+.di-cat{font-size:9px;font-weight:700;padding:1px 7px;border-radius:6px;display:inline-block}
+.cat-irs{background:#0d1a2e;color:#7EC8F5;border:1px solid #7EC8F530}
+.cat-strategies{background:#0a1a0a;color:#4ade80;border:1px solid #4ade8030}
+.cat-products{background:#1a0d2e;color:#a78bfa;border:1px solid #a78bfa30}
+.cat-policies{background:#1a1000;color:#f59e0b;border:1px solid #f59e0b30}
+.cat-compliance{background:#1a050a;color:#f87171;border:1px solid #f8717130}
+
+/* ── EDITOR ── */
+.editor-form{display:flex;flex-direction:column;gap:12px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{font-size:10px;font-weight:700;color:#8b949e;display:block;margin-bottom:4px;
+  text-transform:uppercase;letter-spacing:.5px}
+input,select,textarea{width:100%;background:#0d1117;border:1px solid #21262d;border-radius:6px;
+  color:#e6edf3;font-size:12px;padding:8px 12px;font-family:inherit;outline:none;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{border-color:#7EC8F560}
+textarea{resize:vertical;min-height:200px;line-height:1.7}
+select option{background:#0d1117}
+
+/* ── BUTTONS ── */
+.btn{border:none;border-radius:6px;font-size:12px;font-weight:700;padding:8px 18px;
+  cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-primary{background:#1a3a6a;color:#7EC8F5;border:1px solid #7EC8F540}
+.btn-primary:hover{background:#1e4580;border-color:#7EC8F5}
+.btn-success{background:#0a1a0a;color:#4ade80;border:1px solid #4ade8040}
+.btn-success:hover{background:#0d2a0d;border-color:#4ade80}
+.btn-danger{background:#1a0505;color:#f85149;border:1px solid #f8514940}
+.btn-danger:hover{background:#2a0808;border-color:#f85149}
+.btn-warn{background:#1a1000;color:#f59e0b;border:1px solid #f59e0b40}
+.btn-warn:hover{background:#2a1800}
+.btn-sm{padding:5px 12px;font-size:11px}
+.btn-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* ── RAG TESTER ── */
+.query-input-row{display:flex;gap:10px;margin-bottom:16px}
+.query-input-row input{flex:1}
+.result-card{background:#0d1117;border:1px solid #21262d;border-radius:8px;
+  padding:14px;margin-bottom:10px;transition:border-color .2s}
+.result-card.top{border-color:#7EC8F560}
+.rc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.rc-title{font-size:12px;font-weight:700;color:#e6edf3}
+.rc-score{font-size:11px;font-weight:700;color:#7EC8F5}
+.rc-cat{font-size:9px}
+.rc-preview{font-size:11px;color:#8b949e;line-height:1.7}
+.score-bar{height:4px;border-radius:2px;background:#21262d;margin-top:8px;overflow:hidden}
+.score-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#1a3a6a,#7EC8F5)}
+
+.prompt-preview{background:#0d1117;border:1px solid #21262d;border-left:3px solid #7EC8F5;
+  border-radius:6px;padding:14px;font-family:monospace;font-size:11px;color:#a78bfa;
+  line-height:1.8;white-space:pre-wrap;max-height:300px;overflow-y:auto}
+
+/* ── SETTINGS ── */
+.slider-row{display:flex;align-items:center;gap:10px}
+.slider-row input[type=range]{flex:1;accent-color:#7EC8F5}
+.slider-val{font-size:13px;font-weight:700;color:#7EC8F5;min-width:40px;text-align:right}
+
+/* ── AUDIT TABLE ── */
+.audit-table{width:100%;border-collapse:collapse}
+.audit-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:#484f58;padding:8px 12px;border-bottom:2px solid #21262d;text-align:left}
+.audit-table td{padding:10px 12px;border-bottom:1px solid #161b22;font-size:11px;vertical-align:top}
+.audit-table tr:hover td{background:#1c2128}
+.audit-time{color:#484f58;font-size:10px;white-space:nowrap}
+.audit-query{color:#c9d1d9;font-weight:600}
+.audit-docs{display:flex;flex-direction:column;gap:3px}
+.audit-doc-tag{font-size:9px;padding:2px 8px;border-radius:6px;background:#0d1a2e;
+  color:#7EC8F5;border:1px solid #7EC8F520;display:inline-block}
+
+/* ── FEEDBACK ── */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;
+  font-size:12px;font-weight:700;z-index:999;display:none;animation:slideUp .3s ease}
+.toast.success{background:#0a2a0a;border:1px solid #4ade80;color:#4ade80}
+.toast.error{background:#2a0505;border:1px solid #f85149;color:#f85149}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.empty-state{text-align:center;padding:40px;color:#484f58;font-size:12px}
+
+/* ── SYSTEM WALKTHROUGH ── */
+.wt-wrap{display:grid;grid-template-columns:56% 44%;height:280px}
+.wt-svg-pane{padding:8px 10px;display:flex;align-items:center;justify-content:center}
+.wt-info-pane{border-left:1px solid #21262d;padding:14px;overflow:hidden;display:flex;flex-direction:column}
+.wt-snum{font-size:9px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.wt-stitle{font-size:13px;font-weight:800;color:#e6edf3;line-height:1.3;margin-bottom:3px}
+.wt-ssub{font-size:10px;color:#7EC8F5;margin-bottom:8px}
+.wt-sbody{flex:1;overflow:hidden}
+.wt-ctrl{border-top:1px solid #21262d;padding:8px 16px;display:flex;align-items:center;justify-content:space-between}
+.wt-dots{display:flex;gap:5px}
+.wt-dot{width:7px;height:7px;border-radius:50%;background:#21262d;cursor:pointer;transition:all .2s}
+.wt-dot.done{background:#484f58}.wt-dot.active{background:#7EC8F5;width:18px;border-radius:4px;box-shadow:0 0 5px #7EC8F580}
+.wt-mock-row{display:flex;justify-content:space-between;padding:4px 8px;background:#0d1117;border-radius:4px;margin-bottom:3px;font-size:10px}
+.wt-tag{font-size:8px;font-weight:700;padding:1px 7px;border-radius:6px;display:inline-block}
+.wt-tag.irs{background:#0d1a2e;color:#7EC8F5;border:1px solid #7EC8F530}
+.wt-tag.strat{background:#0a1a0a;color:#4ade80;border:1px solid #4ade8030}
+.wt-tag.prod{background:#1a0d2e;color:#a78bfa;border:1px solid #a78bfa30}
+.wt-tag.scen{background:#001a14;color:#34d399;border:1px solid #34d39930}
+.wt-tag.comp{background:#1a050a;color:#f87171;border:1px solid #f8717130}
+.wt-sb-row{margin-bottom:5px}
+.wt-sb-hd{display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px}
+.wt-sb-t{color:#c9d1d9;font-weight:600}.wt-sb-p{color:#7EC8F5;font-weight:700}
+.wt-sb-track{height:4px;background:#21262d;border-radius:2px;overflow:hidden}
+.wt-sb-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#1a3a6a,#7EC8F5);transition:width 1.1s ease}
+.wt-tok{display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;margin:2px;background:#21262d;color:#8b949e}
+.wt-tok.hi{background:#1a3a6a;color:#7EC8F5;border:1px solid #7EC8F540}
+.wt-answer{background:#0d1a2e;border:1px solid #7EC8F540;border-radius:6px;padding:8px 10px;font-size:10px;color:#c9d1d9;line-height:1.7}
+.wt-cite{font-size:8px;font-weight:700;padding:1px 6px;background:#161b22;border:1px solid #7EC8F540;border-radius:3px;color:#7EC8F5;margin:1px;display:inline-block}
+.wt-code{background:#010409;border:1px solid #21262d;border-radius:4px;padding:8px;font-family:monospace;font-size:9px;line-height:1.8;color:#8b949e}
+.wt-kw{color:#f97316}.wt-fn{color:#7EC8F5}.wt-str{color:#a3e635}.wt-cm{color:#484f58}
+.wt-pdot{width:7px;height:7px;border-radius:50%;background:#7EC8F5;animation:wtB 1.2s ease infinite;display:inline-block;margin:2px}
+.wt-pdot:nth-child(2){animation-delay:.2s}.wt-pdot:nth-child(3){animation-delay:.4s}
+@keyframes wtB{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-5px);opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="tb-logo">RMD <span>Agent</span></div>
+    <div class="tb-badge">ADMIN</div>
+  </div>
+  <div class="tb-status">
+    <div class="status-dot" id="beStatus"></div>
+    <span id="beLabel">Checking...</span>
+    &nbsp;|&nbsp;
+    <div class="status-dot" id="llmStatus"></div>
+    <span id="llmLabel">Ollama</span>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="tab active" onclick="showTab('dashboard')">Dashboard</div>
+  <div class="tab" onclick="showTab('kb')">Knowledge Base</div>
+  <div class="tab" onclick="showTab('tester')">RAG Tester</div>
+  <div class="tab" onclick="showTab('settings')">LLM Settings</div>
+  <div class="tab" onclick="showTab('audit')">Audit Log</div>
+</div>
+
+<!-- TAB 1 — DASHBOARD -->
+<div class="content panel active" id="tab-dashboard">
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num" id="s-docs">—</div><div class="stat-lbl">Knowledge Docs</div></div>
+    <div class="stat-box"><div class="stat-num" id="s-terms">—</div><div class="stat-lbl">Unique Terms</div></div>
+    <div class="stat-box"><div class="stat-num" id="s-model">—</div><div class="stat-lbl">Active Model</div></div>
+    <div class="stat-box"><div class="stat-num" id="s-temp">—</div><div class="stat-lbl">Temperature</div></div>
+  </div>
+  <div class="health-grid">
+    <div class="health-card" id="hc-backend">
+      <div class="hc-icon">⚙️</div><div class="hc-label">Backend</div>
+      <div class="hc-value" id="hcv-backend">Checking...</div>
+      <div class="hc-sub">localhost:8085</div>
+    </div>
+    <div class="health-card" id="hc-ollama">
+      <div class="hc-icon">🤖</div><div class="hc-label">Ollama LLM</div>
+      <div class="hc-value" id="hcv-ollama">Checking...</div>
+      <div class="hc-sub" id="hcsub-ollama">localhost:11434</div>
+    </div>
+    <div class="health-card" id="hc-rag">
+      <div class="hc-icon">🗄️</div><div class="hc-label">RAG Index</div>
+      <div class="hc-value" id="hcv-rag">Checking...</div>
+      <div class="hc-sub" id="hcsub-rag">In-memory · TF-IDF</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">Quick Actions</div>
+    <div class="btn-row">
+      <button class="btn btn-warn" onclick="rebuildIndex()">🔄 Rebuild RAG Index</button>
+      <button class="btn btn-primary" onclick="refreshHealth()">↺ Refresh Status</button>
+      <button class="btn btn-primary" onclick="showTab('kb')">📄 Manage Knowledge Base</button>
+      <button class="btn btn-primary" onclick="showTab('tester')">🔍 Test RAG Query</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Knowledge Base — Category Breakdown</div>
+    <div id="catBreakdown" style="display:flex;gap:8px;flex-wrap:wrap"><div class="empty-state">Loading...</div></div>
+  </div>
+
+  <!-- SYSTEM WALKTHROUGH CARD -->
+  <div class="card" style="padding:0;overflow:hidden;margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #21262d">
+      <div class="card-title" style="margin:0">How the System Works</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-primary btn-sm" onclick="wt_prev()">◀</button>
+        <div class="wt-dots" id="wt-dots"></div>
+        <button class="btn btn-primary btn-sm" onclick="wt_next()">▶</button>
+        <button class="btn btn-success btn-sm" id="wt-playbtn" onclick="wt_toggle()">▶ Play</button>
+      </div>
+    </div>
+    <div class="wt-wrap">
+      <!-- SVG DIAGRAM -->
+      <div class="wt-svg-pane">
+        <svg id="wt-diagram" viewBox="0 0 555 215" style="width:100%;max-height:265px;overflow:visible">
+          <defs>
+            <marker id="wt-arr" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+              <path d="M0,0 L7,2.5 L0,5 Z" fill="#21262d"/>
+            </marker>
+            <marker id="wt-arr-b" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+              <path d="M0,0 L7,2.5 L0,5 Z" fill="#7EC8F5"/>
+            </marker>
+            <marker id="wt-arr-g" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+              <path d="M0,0 L7,2.5 L0,5 Z" fill="#4ade80"/>
+            </marker>
+            <marker id="wt-arr-y" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+              <path d="M0,0 L7,2.5 L0,5 Z" fill="#f59e0b"/>
+            </marker>
+            <marker id="wt-arr-p" markerWidth="7" markerHeight="5" refX="5" refY="2.5" orient="auto">
+              <path d="M0,0 L7,2.5 L0,5 Z" fill="#a78bfa"/>
+            </marker>
+          </defs>
+
+          <!-- edges -->
+          <path id="wt-e1" d="M105,26 L148,26" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e2" d="M253,26 L283,26" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e3" d="M388,26 L435,26" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e4" d="M435,36 L388,36" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e5" d="M335,48 L335,165" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e6" d="M308,185 C195,178 195,58 195,48" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e7" d="M148,36 L105,36" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e8" d="M195,48 L195,165" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e9" d="M148,185 L105,185" fill="none" stroke="#21262d" stroke-width="1.4" marker-end="url(#wt-arr)"/>
+          <path id="wt-e10" d="M60,8 C60,-20 490,-20 490,8" fill="none" stroke="#21262d" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#wt-arr)"/>
+
+          <!-- edge labels -->
+          <text x="128" y="22" text-anchor="middle" fill="#21262d" font-size="7" font-family="Segoe UI">query</text>
+          <text x="268" y="22" text-anchor="middle" fill="#21262d" font-size="7" font-family="Segoe UI">route</text>
+          <text x="410" y="22" text-anchor="middle" fill="#21262d" font-size="7" font-family="Segoe UI">lookup</text>
+          <text x="270" y="8" text-anchor="middle" fill="#21262d" font-size="7" font-family="Segoe UI">BA adds/updates docs</text>
+          <text x="350" y="115" text-anchor="end" fill="#21262d" font-size="7" font-family="Segoe UI">prompt</text>
+          <text x="128" y="50" text-anchor="middle" fill="#21262d" font-size="7" font-family="Segoe UI">answer</text>
+          <text x="205" y="115" text-anchor="start" fill="#21262d" font-size="7" font-family="Segoe UI">log</text>
+          <text x="125" y="180" text-anchor="middle" fill="#21262d" font-size="7" font-family="Segoe UI">review</text>
+
+          <!-- FA App node -->
+          <g id="wt-n-fa">
+            <rect x="5" y="8" width="100" height="40" rx="7" fill="#161b22" stroke="#21262d" stroke-width="1.5" id="wt-r-fa" style="transition:stroke .3s,filter .3s"/>
+            <text x="55" y="24" text-anchor="middle" fill="#8b949e" font-size="8" font-weight="700" font-family="Segoe UI">FA DASHBOARD</text>
+            <text x="55" y="38" text-anchor="middle" fill="#484f58" font-size="7" font-family="Segoe UI">Main App · :4500</text>
+          </g>
+          <!-- Spring Boot node -->
+          <g id="wt-n-spring">
+            <rect x="148" y="8" width="110" height="40" rx="7" fill="#161b22" stroke="#21262d" stroke-width="1.5" id="wt-r-spring" style="transition:stroke .3s,filter .3s"/>
+            <text x="203" y="24" text-anchor="middle" fill="#8b949e" font-size="8" font-weight="700" font-family="Segoe UI">SPRING BOOT API</text>
+            <text x="203" y="38" text-anchor="middle" fill="#484f58" font-size="7" font-family="Segoe UI">localhost:8085</text>
+          </g>
+          <!-- RagService node -->
+          <g id="wt-n-rag">
+            <rect x="283" y="8" width="110" height="40" rx="7" fill="#161b22" stroke="#21262d" stroke-width="1.5" id="wt-r-rag" style="transition:stroke .3s,filter .3s"/>
+            <text x="338" y="24" text-anchor="middle" fill="#8b949e" font-size="8" font-weight="700" font-family="Segoe UI">RAG SERVICE</text>
+            <text x="338" y="38" text-anchor="middle" fill="#484f58" font-size="7" font-family="Segoe UI">TF-IDF · cosine sim</text>
+          </g>
+          <!-- Knowledge Base node -->
+          <g id="wt-n-kb">
+            <rect x="435" y="8" width="115" height="40" rx="7" fill="#161b22" stroke="#21262d" stroke-width="1.5" id="wt-r-kb" style="transition:stroke .3s,filter .3s"/>
+            <text x="492" y="24" text-anchor="middle" fill="#8b949e" font-size="8" font-weight="700" font-family="Segoe UI">KNOWLEDGE BASE</text>
+            <text x="492" y="38" text-anchor="middle" fill="#484f58" font-size="7" font-family="Segoe UI">28 docs · 6 categories</text>
+          </g>
+          <!-- OllamaLLM node -->
+          <g id="wt-n-ollama">
+            <rect x="283" y="165" width="110" height="40" rx="7" fill="#161b22" stroke="#21262d" stroke-width="1.5" id="wt-r-ollama" style="transition:stroke .3s,filter .3s"/>
+            <text x="338" y="181" text-anchor="middle" fill="#8b949e" font-size="8" font-weight="700" font-family="Segoe UI">OllamaLLM</text>
+            <text x="338" y="195" text-anchor="middle" fill="#484f58" font-size="7" font-family="Segoe UI">Phi-3 · :11434</text>
+          </g>
+          <!-- Audit Log node -->
+          <g id="wt-n-audit">
+            <rect x="148" y="165" width="110" height="40" rx="7" fill="#161b22" stroke="#21262d" stroke-width="1.5" id="wt-r-audit" style="transition:stroke .3s,filter .3s"/>
+            <text x="203" y="181" text-anchor="middle" fill="#8b949e" font-size="8" font-weight="700" font-family="Segoe UI">AUDIT LOG</text>
+            <text x="203" y="195" text-anchor="middle" fill="#484f58" font-size="7" font-family="Segoe UI">ring buffer · 50 entries</text>
+          </g>
+          <!-- Admin UI node -->
+          <g id="wt-n-admin">
+            <rect x="5" y="165" width="100" height="40" rx="7" fill="#161b22" stroke="#21262d" stroke-width="1.5" id="wt-r-admin" style="transition:stroke .3s,filter .3s"/>
+            <text x="55" y="181" text-anchor="middle" fill="#8b949e" font-size="8" font-weight="700" font-family="Segoe UI">ADMIN UI</text>
+            <text x="55" y="195" text-anchor="middle" fill="#484f58" font-size="7" font-family="Segoe UI">/admin.html</text>
+          </g>
+
+          <!-- animated packets -->
+          <circle id="wt-p1" r="5" fill="#a78bfa" opacity="0">
+            <animateMotion id="wt-am1" dur="1.8s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e10"/></animateMotion>
+          </circle>
+          <circle id="wt-p2" r="5" fill="#7EC8F5" opacity="0">
+            <animateMotion id="wt-am2" dur="0.9s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e1"/></animateMotion>
+          </circle>
+          <circle id="wt-p3" r="5" fill="#7EC8F5" opacity="0">
+            <animateMotion id="wt-am3" dur="0.9s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e2"/></animateMotion>
+          </circle>
+          <circle id="wt-p4a" r="4" fill="#4ade80" opacity="0">
+            <animateMotion id="wt-am4a" dur="0.7s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e3"/></animateMotion>
+          </circle>
+          <circle id="wt-p4b" r="4" fill="#4ade80" opacity="0">
+            <animateMotion id="wt-am4b" dur="0.7s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e4"/></animateMotion>
+          </circle>
+          <circle id="wt-p5" r="5" fill="#f59e0b" opacity="0">
+            <animateMotion id="wt-am5" dur="0.8s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e4"/></animateMotion>
+          </circle>
+          <circle id="wt-p6" r="5" fill="#7EC8F5" opacity="0">
+            <animateMotion id="wt-am6" dur="1.3s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e5"/></animateMotion>
+          </circle>
+          <circle id="wt-p7" r="5" fill="#4ade80" opacity="0">
+            <animateMotion id="wt-am7" dur="1.2s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e6"/></animateMotion>
+          </circle>
+          <circle id="wt-p8" r="5" fill="#4ade80" opacity="0">
+            <animateMotion id="wt-am8" dur="0.8s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e7"/></animateMotion>
+          </circle>
+          <circle id="wt-p9" r="4" fill="#8b949e" opacity="0">
+            <animateMotion id="wt-am9" dur="1.0s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e8"/></animateMotion>
+          </circle>
+          <circle id="wt-p10" r="4" fill="#8b949e" opacity="0">
+            <animateMotion id="wt-am10" dur="0.7s" begin="indefinite" repeatCount="indefinite"><mpath href="#wt-e9"/></animateMotion>
+          </circle>
+        </svg>
+      </div>
+      <!-- INFO PANEL -->
+      <div class="wt-info-pane">
+        <div class="wt-snum" id="wt-snum">Step 1 of 9</div>
+        <div class="wt-stitle" id="wt-stitle">Loading…</div>
+        <div class="wt-ssub" id="wt-ssub"></div>
+        <div class="wt-sbody" id="wt-sbody"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TAB 2 — KNOWLEDGE BASE -->
+<div class="content panel" id="tab-kb">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:700;color:#e6edf3">Knowledge Base Manager</div>
+    <div class="btn-row">
+      <button class="btn btn-success btn-sm" onclick="newDocument()">+ New Document</button>
+      <button class="btn btn-warn btn-sm" onclick="rebuildIndex()">🔄 Rebuild Index</button>
+    </div>
+  </div>
+  <div class="two-col">
+    <div>
+      <div class="doc-list">
+        <div class="doc-list-header">
+          <span>Documents</span>
+          <span id="docCount" style="color:#7EC8F5;font-size:11px">—</span>
+        </div>
+        <div id="docListBody"><div class="empty-state">Loading...</div></div>
+      </div>
+    </div>
+    <div class="card" id="editorCard">
+      <div class="card-title" id="editorTitle">Select a document to edit</div>
+      <div id="editorBody">
+        <div class="empty-state" style="padding:60px">
+          ← Select a document from the list, or click <strong>+ New Document</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3 — RAG TESTER -->
+<div class="content panel" id="tab-tester">
+  <div class="card">
+    <div class="card-title">Test a RAG Query</div>
+    <div style="font-size:12px;color:#8b949e;margin-bottom:12px">
+      Type any question an FA might ask. See which knowledge documents get retrieved and what the augmented prompt looks like.
+    </div>
+    <div class="query-input-row">
+      <input type="text" id="testQuery" placeholder="e.g. client taking cash distribution — where should it land?"
+        onkeydown="if(event.key==='Enter') runTest()"/>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="margin:0;white-space:nowrap">Top K:</label>
+        <input type="number" id="testTopK" value="3" min="1" max="10" style="width:60px"/>
+        <button class="btn btn-primary" onclick="runTest()">▶ Run</button>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:6px">
+      <span style="font-size:10px;color:#484f58">Quick tests:</span>
+      <button class="btn btn-sm" style="background:#0d1117;border:1px solid #21262d;color:#8b949e"
+        onclick="setAndRun('what is a QCD and when should a client use it?')">QCD</button>
+      <button class="btn btn-sm" style="background:#0d1117;border:1px solid #21262d;color:#8b949e"
+        onclick="setAndRun('client age 74 taking cash distribution landing account')">Cash Landing</button>
+      <button class="btn btn-sm" style="background:#0d1117;border:1px solid #21262d;color:#8b949e"
+        onclick="setAndRun('Roth conversion tax implications RMD reduction strategy')">Roth</button>
+      <button class="btn btn-sm" style="background:#0d1117;border:1px solid #21262d;color:#8b949e"
+        onclick="setAndRun('IRMAA Medicare surcharge income threshold')">IRMAA</button>
+    </div>
+  </div>
+  <div id="testResults" style="display:none">
+    <div style="font-size:11px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Retrieved Documents</div>
+    <div id="resultCards"></div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Augmented Prompt Preview</div>
+      <div style="font-size:11px;color:#8b949e;margin-bottom:10px">
+        This is what gets sent to Phi-3 — your retrieved documents injected before the question.
+      </div>
+      <div class="prompt-preview" id="promptPreview"></div>
+    </div>
+  </div>
+  <div id="testEmpty" style="margin-top:20px">
+    <div class="empty-state">Enter a query above and click Run to test retrieval</div>
+  </div>
+</div>
+
+<!-- TAB 4 — LLM SETTINGS -->
+<div class="content panel" id="tab-settings">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-title">Model Configuration</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label>Model Name</label>
+          <input type="text" id="cfg-model" placeholder="phi3"/>
+          <div style="font-size:10px;color:#484f58;margin-top:4px">
+            Available via Ollama: phi3, llama3.1, mistral, gemma2 — must be pulled first
+          </div>
+        </div>
+        <div>
+          <label>Temperature — <span style="color:#8b949e">Controls creativity vs precision</span></label>
+          <div class="slider-row">
+            <input type="range" id="cfg-temp" min="0" max="1" step="0.05"
+              oninput="document.getElementById('cfg-temp-val').textContent=this.value"/>
+            <div class="slider-val" id="cfg-temp-val">0.3</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#484f58;margin-top:2px">
+            <span>0.0 — Deterministic / factual</span><span>1.0 — Creative / varied</span>
+          </div>
+        </div>
+        <div>
+          <label>Top P — <span style="color:#8b949e">Nucleus sampling cutoff</span></label>
+          <div class="slider-row">
+            <input type="range" id="cfg-topp" min="0.1" max="1" step="0.05"
+              oninput="document.getElementById('cfg-topp-val').textContent=this.value"/>
+            <div class="slider-val" id="cfg-topp-val">0.9</div>
+          </div>
+          <div style="font-size:10px;color:#484f58;margin-top:2px">0.9 is a safe default. Lower = more conservative word choices.</div>
+        </div>
+        <div>
+          <label>Max Tokens (num_predict)</label>
+          <div class="slider-row">
+            <input type="range" id="cfg-tokens" min="64" max="512" step="32"
+              oninput="document.getElementById('cfg-tokens-val').textContent=this.value+' (~'+Math.round(this.value*3.8)+' chars)'"/>
+            <div class="slider-val" id="cfg-tokens-val" style="min-width:120px;font-size:11px">256 (~972 chars)</div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="saveSettings()">✓ Save Settings</button>
+          <button class="btn btn-primary" onclick="loadSettings()">↺ Reload from Server</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">What Each Setting Does</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px">
+          <div style="font-size:11px;font-weight:700;color:#7EC8F5;margin-bottom:4px">Temperature</div>
+          <div style="font-size:11px;color:#8b949e;line-height:1.7">
+            <strong style="color:#c9d1d9">0.1–0.3</strong> — Best for financial advice. Consistent and factual. Use in production.<br/>
+            <strong style="color:#c9d1d9">0.5–0.7</strong> — More varied phrasing. Good for client-facing summaries.<br/>
+            <strong style="color:#c9d1d9">0.8+</strong> — Creative but may introduce errors. Avoid for financial content.
+          </div>
+        </div>
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px">
+          <div style="font-size:11px;font-weight:700;color:#7EC8F5;margin-bottom:4px">Max Tokens</div>
+          <div style="font-size:11px;color:#8b949e;line-height:1.7">
+            256 tokens ≈ a short paragraph. 512 tokens ≈ 2 paragraphs. Higher = slower response.
+          </div>
+        </div>
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px">
+          <div style="font-size:11px;font-weight:700;color:#7EC8F5;margin-bottom:4px">Model</div>
+          <div style="font-size:11px;color:#8b949e;line-height:1.7">
+            <strong style="color:#c9d1d9">phi3</strong> — Fast, runs on CPU.<br/>
+            <strong style="color:#c9d1d9">llama3.1</strong> — Much better reasoning, needs GPU.<br/>
+            <strong style="color:#c9d1d9">mistral</strong> — Good balance of speed and quality.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5 — AUDIT LOG -->
+<div class="content panel" id="tab-audit">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="card-title" style="margin:0">Recent RAG Queries</div>
+      <button class="btn btn-primary btn-sm" onclick="loadAudit()">↺ Refresh</button>
+    </div>
+    <div id="auditContent"><div class="empty-state">Loading audit log...</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Served from the same origin — use relative paths, no hardcoded port
+const API = '';
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const tabs = ['dashboard','kb','tester','settings','audit'];
+  document.querySelectorAll('.tab')[tabs.indexOf(name)].classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'dashboard') refreshHealth();
+  if (name === 'kb')        loadDocuments();
+  if (name === 'settings')  loadSettings();
+  if (name === 'audit')     loadAudit();
+}
+
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast '+type; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 2800);
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+async function refreshHealth() {
+  try {
+    const h = await api('GET', '/admin/health');
+    document.getElementById('beStatus').className = 'status-dot up';
+    document.getElementById('beLabel').textContent = 'Backend UP';
+    const ollamaUp = h.llm.ollamaStatus === 'UP';
+    document.getElementById('llmStatus').className = 'status-dot '+(ollamaUp?'up':'down');
+    document.getElementById('llmLabel').textContent = 'Ollama '+h.llm.ollamaStatus;
+    setCard('backend','UP','#161b22','#4ade8040','#4ade80');
+    setCard('ollama',h.llm.ollamaStatus,'#161b22',ollamaUp?'#4ade8040':'#f8514940',ollamaUp?'#4ade80':'#f85149');
+    const stats = h.ragIndex;
+    setCard('rag',stats.documentCount+' docs indexed','#161b22','#7EC8F540','#7EC8F5');
+    document.getElementById('hcsub-rag').textContent = stats.uniqueTerms+' unique terms';
+    document.getElementById('hcsub-ollama').textContent = h.llm.model+' · '+h.llm.ollamaUrl.replace('/api/generate','');
+    document.getElementById('s-docs').textContent = stats.documentCount;
+    document.getElementById('s-terms').textContent = stats.uniqueTerms;
+    document.getElementById('s-model').textContent = h.llm.model;
+    document.getElementById('s-temp').textContent = '—';
+    const cats = stats.byCategory || {};
+    document.getElementById('catBreakdown').innerHTML = Object.entries(cats).map(([k,v]) =>
+      `<div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:12px 18px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#7EC8F5">${v}</div>
+        <div style="font-size:10px;color:#8b949e;margin-top:2px">${k}</div></div>`).join('');
+  } catch(e) {
+    document.getElementById('beStatus').className = 'status-dot down';
+    document.getElementById('beLabel').textContent = 'Backend DOWN';
+    setCard('backend','Cannot connect','#1a0505','#f8514940','#f85149');
+    setCard('ollama','Unknown','#161b22','#21262d','#484f58');
+    setCard('rag','Unknown','#161b22','#21262d','#484f58');
+  }
+}
+
+function setCard(id, value, bg, border, color) {
+  const c = document.getElementById('hc-'+id);
+  const v = document.getElementById('hcv-'+id);
+  c.style.background = bg; c.style.borderColor = border; v.style.color = color; v.textContent = value;
+}
+
+async function rebuildIndex() {
+  try {
+    const r = await api('POST', '/admin/rag/rebuild');
+    toast('Index rebuilt — '+r.indexStats.documentCount+' docs, '+r.indexStats.uniqueTerms+' terms');
+    if (document.getElementById('tab-dashboard').classList.contains('active')) refreshHealth();
+  } catch(e) { toast('Rebuild failed: '+e.message,'error'); }
+}
+
+let allDocs = [], selectedDocId = null;
+
+async function loadDocuments() {
+  try {
+    allDocs = await api('GET', '/admin/rag/documents');
+    renderDocList();
+  } catch(e) {
+    document.getElementById('docListBody').innerHTML = '<div class="empty-state">Cannot load — is the backend running?</div>';
+  }
+}
+
+function renderDocList() {
+  document.getElementById('docCount').textContent = allDocs.length+' docs';
+  const cats = ['irs-rules','strategies','products','policies','compliance'];
+  let html = '';
+  cats.forEach(cat => {
+    const docs = allDocs.filter(d => d.category === cat);
+    if (!docs.length) return;
+    html += `<div style="padding:6px 14px 4px;font-size:9px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.4px;background:#0d1117;border-bottom:1px solid #161b22">${cat}</div>`;
+    docs.forEach(d => {
+      html += `<div class="doc-item${d.id===selectedDocId?' selected':''}" onclick="selectDoc('${d.id}')">
+        <div class="di-title">${d.title}</div></div>`;
+    });
+  });
+  document.getElementById('docListBody').innerHTML = html || '<div class="empty-state">No documents</div>';
+}
+
+function selectDoc(id) {
+  selectedDocId = id; renderDocList();
+  const doc = allDocs.find(d => d.id === id);
+  if (doc) renderEditor(doc);
+}
+
+function renderEditor(doc, isNew) {
+  document.getElementById('editorTitle').textContent = isNew ? 'New Document' : 'Edit Document';
+  document.getElementById('editorBody').innerHTML = `
+    <div class="editor-form">
+      <div class="form-row">
+        <div><label>Document ID</label>
+          <input type="text" id="ef-id" value="${doc.id||''}" ${isNew?'':'readonly style="opacity:.5"'}/></div>
+        <div><label>Category</label>
+          <select id="ef-cat">${['irs-rules','strategies','products','policies','compliance'].map(c=>
+            `<option value="${c}"${doc.category===c?' selected':''}>${c}</option>`).join('')}</select></div>
+      </div>
+      <div><label>Title</label>
+        <input type="text" id="ef-title" value="${(doc.title||'').replace(/"/g,'&quot;')}"/></div>
+      <div><label>Content — <span style="font-weight:400;color:#484f58">Replace [REPLACE ...] placeholders with your firm's actual data</span></label>
+        <textarea id="ef-content">${doc.content||''}</textarea></div>
+      <div class="btn-row">
+        <button class="btn btn-success" onclick="${isNew?'saveNew()':'saveEdit()'}">✓ Save</button>
+        ${!isNew?`<button class="btn btn-danger" onclick="deleteDoc('${doc.id}')">Delete</button>`:''}
+        <button class="btn btn-primary" onclick="cancelEdit()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+function newDocument() {
+  selectedDocId = null; renderDocList();
+  renderEditor({id:'',title:'',category:'products',content:''},true);
+}
+
+function cancelEdit() {
+  selectedDocId = null; renderDocList();
+  document.getElementById('editorTitle').textContent = 'Select a document to edit';
+  document.getElementById('editorBody').innerHTML = '<div class="empty-state" style="padding:60px">← Select a document from the list, or click + New Document</div>';
+}
+
+async function saveEdit() {
+  const body = { title: document.getElementById('ef-title').value,
+    category: document.getElementById('ef-cat').value,
+    content: document.getElementById('ef-content').value };
+  try {
+    await api('PUT', '/admin/rag/documents/'+selectedDocId, body);
+    toast('Saved and index rebuilt');
+    await loadDocuments();
+    const updated = allDocs.find(d => d.id === selectedDocId);
+    if (updated) renderEditor(updated);
+  } catch(e) { toast('Save failed: '+e.message,'error'); }
+}
+
+async function saveNew() {
+  const body = { id: document.getElementById('ef-id').value||undefined,
+    title: document.getElementById('ef-title').value,
+    category: document.getElementById('ef-cat').value,
+    content: document.getElementById('ef-content').value };
+  try {
+    const r = await api('POST', '/admin/rag/documents', body);
+    toast('Document added — id: '+r.id);
+    selectedDocId = r.id;
+    await loadDocuments();
+    const added = allDocs.find(d => d.id === r.id);
+    if (added) renderEditor(added);
+  } catch(e) { toast('Add failed: '+e.message,'error'); }
+}
+
+async function deleteDoc(id) {
+  if (!confirm('Delete this document? The index will be rebuilt automatically.')) return;
+  try {
+    await api('DELETE', '/admin/rag/documents/'+id);
+    toast('Deleted'); cancelEdit(); await loadDocuments();
+  } catch(e) { toast('Delete failed: '+e.message,'error'); }
+}
+
+function setAndRun(q) { document.getElementById('testQuery').value = q; runTest(); }
+
+async function runTest() {
+  const query = document.getElementById('testQuery').value.trim();
+  const topK = parseInt(document.getElementById('testTopK').value)||3;
+  if (!query) return;
+  document.getElementById('testEmpty').style.display = 'none';
+  document.getElementById('resultCards').innerHTML = '<div class="empty-state">Searching...</div>';
+  document.getElementById('testResults').style.display = 'block';
+  try {
+    const r = await api('POST', '/admin/rag/test', { query, topK });
+    const catClass = c => 'cat-'+(c||'').replace('-','');
+    document.getElementById('resultCards').innerHTML = r.results.length
+      ? r.results.map((res,i) => `
+          <div class="result-card ${i===0?'top':''}">
+            <div class="rc-header">
+              <div><div class="rc-title">${res.title}</div>
+                <div class="rc-cat"><span class="di-cat ${catClass(res.category)}">${res.category}</span></div></div>
+              <div class="rc-score">${(res.score*100).toFixed(1)}% match</div>
+            </div>
+            <div class="rc-preview">${res.preview}</div>
+            <div class="score-bar"><div class="score-fill" style="width:${res.score*100}%"></div></div>
+          </div>`).join('')
+      : '<div class="empty-state">No documents matched. Try different wording or add relevant documents.</div>';
+    document.getElementById('promptPreview').textContent = r.augmentedPromptPreview;
+  } catch(e) {
+    document.getElementById('resultCards').innerHTML = '<div class="empty-state" style="color:#f85149">Error: '+e.message+'</div>';
+  }
+}
+
+async function loadSettings() {
+  try {
+    const s = await api('GET', '/admin/settings');
+    document.getElementById('cfg-model').value = s.model||'phi3';
+    document.getElementById('cfg-temp').value = s.temperature||0.3;
+    document.getElementById('cfg-temp-val').textContent = s.temperature||0.3;
+    document.getElementById('cfg-topp').value = s.topP||0.9;
+    document.getElementById('cfg-topp-val').textContent = s.topP||0.9;
+    document.getElementById('cfg-tokens').value = s.numPredict||256;
+    document.getElementById('cfg-tokens-val').textContent = (s.numPredict||256)+' (~'+Math.round((s.numPredict||256)*3.8)+' chars)';
+    document.getElementById('s-temp').textContent = s.temperature||0.3;
+    document.getElementById('s-model').textContent = s.model||'phi3';
+  } catch(e) {}
+}
+
+async function saveSettings() {
+  const body = { model: document.getElementById('cfg-model').value,
+    temperature: parseFloat(document.getElementById('cfg-temp').value),
+    topP: parseFloat(document.getElementById('cfg-topp').value),
+    numPredict: parseInt(document.getElementById('cfg-tokens').value) };
+  try {
+    await api('POST', '/admin/settings', body);
+    toast('Settings saved — effective immediately, no restart needed');
+    document.getElementById('s-temp').textContent = body.temperature;
+    document.getElementById('s-model').textContent = body.model;
+  } catch(e) { toast('Save failed: '+e.message,'error'); }
+}
+
+async function loadAudit() {
+  try {
+    const entries = await api('GET', '/admin/audit');
+    if (!entries.length) {
+      document.getElementById('auditContent').innerHTML =
+        '<div class="empty-state">No queries yet — send a chat message or run the RAG tester to see entries here.</div>';
+      return;
+    }
+    document.getElementById('auditContent').innerHTML = `
+      <table class="audit-table">
+        <thead><tr><th>Time</th><th>Query</th><th>Documents Retrieved</th></tr></thead>
+        <tbody>${entries.map(e=>`
+          <tr>
+            <td class="audit-time">${new Date(e.timestamp).toLocaleTimeString()}</td>
+            <td class="audit-query">${e.query}</td>
+            <td class="audit-docs">${(e.retrieved||[]).map(d=>`<span class="audit-doc-tag">${d}</span>`).join('')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    document.getElementById('auditContent').innerHTML =
+      '<div class="empty-state" style="color:#f85149">Cannot load — backend not reachable.</div>';
+  }
+}
+
+refreshHealth();
+
+// ── SYSTEM WALKTHROUGH ────────────────────────────────────────────────────────
+const WT_STEPS = [
+  { title:"BA Loads the Knowledge Base", sub:"Admin UI → InstitutionalKnowledgeBase.java",
+    nodes:["admin","kb"], edges:["wt-e10"], pkts:["wt-p1"], color:"#a78bfa",
+    body:`<div class="wt-mock-row"><span>RMD Calculation Method</span><span class="wt-tag irs">irs-rules</span></div>
+      <div class="wt-mock-row"><span>QCD Charitable Distribution</span><span class="wt-tag irs">irs-rules</span></div>
+      <div class="wt-mock-row"><span>In-Kind Transfer Strategy</span><span class="wt-tag strat">strategies</span></div>
+      <div class="wt-mock-row"><span>Apex Prime Money Market</span><span class="wt-tag prod">products</span></div>
+      <div class="wt-mock-row"><span>Volatile Market Scenario</span><span class="wt-tag scen">scenarios</span></div>
+      <div class="wt-mock-row"><span>IRMAA Medicare Thresholds</span><span class="wt-tag comp">compliance</span></div>
+      <div style="font-size:9px;color:#484f58;margin-top:4px">TF-IDF index auto-rebuilds on startup via @PostConstruct</div>`},
+  { title:"FA Selects a Client", sub:"Main App Dashboard — Client Context Loaded",
+    nodes:["fa"], edges:[], pkts:[], color:"#7EC8F5",
+    body:`<div style="background:#0d1a2e;border:1px solid #7EC8F540;border-radius:6px;padding:8px 10px;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:700;color:#e6edf3">John &amp; Mary Smith</div>
+        <div style="font-size:9px;color:#484f58;margin-top:2px">Age 75 · Conservative · 3 IRA Accounts</div>
+      </div>
+      <div class="wt-mock-row"><span>IRA — Fidelity</span><span style="color:#4ade80;font-weight:700">$285,000</span></div>
+      <div class="wt-mock-row"><span>IRA — Vanguard</span><span style="color:#4ade80;font-weight:700">$142,000</span></div>
+      <div class="wt-mock-row"><span>IRA — Rollover</span><span style="color:#4ade80;font-weight:700">$58,000</span></div>
+      <div style="padding:5px 8px;background:#0d1117;border-radius:4px;font-size:10px;margin-top:6px">
+        <span style="color:#484f58">RMD Due 2024:</span><span style="color:#7EC8F5;font-weight:700;margin-left:6px">$19,715</span>
+        <span style="color:#484f58;margin-left:10px">Factor 24.6 (age 75)</span></div>`},
+  { title:"FA Asks the AI a Question", sub:"FA App → POST /chat → Spring Boot :8085",
+    nodes:["fa","spring"], edges:["wt-e1"], pkts:["wt-p2"], color:"#7EC8F5",
+    body:`<div style="background:#0d1a2e;border:1px solid #7EC8F540;border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:10px;color:#c9d1d9;line-height:1.7">
+        "My client is 75, markets are down — what is the best RMD strategy?"
+      </div>
+      <div class="wt-code"><span class="wt-kw">POST</span> localhost:<span class="wt-fn">8085</span>/chat<br/>{<br/>  <span class="wt-str">"message"</span>: <span class="wt-str">"...age 75 markets down..."</span>,<br/>  <span class="wt-str">"clientAge"</span>: <span class="wt-fn">75</span>, <span class="wt-str">"rmdAmount"</span>: <span class="wt-fn">19715</span><br/>}</div>`},
+  { title:"Query Routed to RagService", sub:"Spring Boot → RagService.retrieveAsContext()",
+    nodes:["spring","rag"], edges:["wt-e2"], pkts:["wt-p3"], color:"#7EC8F5",
+    body:`<div style="background:#0d1117;border:1px solid #21262d;border-radius:5px;padding:6px 8px;margin-bottom:6px">
+        <div style="font-size:9px;color:#484f58;margin-bottom:4px">Query tokenized:</div>
+        <span class="wt-tok hi">client</span><span class="wt-tok hi">age</span><span class="wt-tok hi">75</span>
+        <span class="wt-tok">markets</span><span class="wt-tok hi">down</span><span class="wt-tok hi">rmd</span>
+        <span class="wt-tok hi">strategy</span><span class="wt-tok">volatile</span>
+      </div>
+      <div class="wt-code"><span class="wt-kw">public</span> String <span class="wt-fn">retrieveAsContext</span>(String query) {<br/>  <span class="wt-cm">// tokenize → build TF-IDF vector</span><br/>  <span class="wt-cm">// cosine similarity vs 28 docs</span><br/>  <span class="wt-cm">// return top-3 as context string</span><br/>}</div>`},
+  { title:"TF-IDF Scores All 28 Documents", sub:"Cosine similarity computed against every document",
+    nodes:["rag","kb"], edges:["wt-e3","wt-e4"], pkts:["wt-p4a","wt-p4b"], color:"#4ade80",
+    body:`${[["In-Kind Transfer Strategy","89.2"],["Volatile Market Scenario","84.7"],["RMD Calculation Method","71.3"],["Cash Distribution Strategy","64.1"],["Tax-Loss Harvesting","58.8"]]
+      .map(([t,s])=>`<div class="wt-sb-row"><div class="wt-sb-hd"><span class="wt-sb-t">${t}</span><span class="wt-sb-p">${s}%</span></div><div class="wt-sb-track"><div class="wt-sb-fill" style="width:${s}%"></div></div></div>`).join('')}
+      <div style="font-size:9px;color:#484f58;margin-top:4px">23 docs below threshold — not retrieved</div>`},
+  { title:"Top 3 Documents Retrieved", sub:"Best-matching context returned to RagService",
+    nodes:["kb"], edges:["wt-e4"], pkts:["wt-p5"], color:"#f59e0b",
+    body:`<div style="background:#0d1117;border:1px solid #f59e0b60;border-radius:5px;padding:6px 8px;margin-bottom:4px;font-size:10px">
+        <span style="font-weight:700;color:#e6edf3">In-Kind Transfer Strategy</span>
+        <span style="float:right;color:#f59e0b;font-weight:700">89.2%</span>
+        <div style="font-size:9px;color:#8b949e;margin-top:2px">Transfer securities without selling, retains market exposure…</div>
+      </div>
+      <div style="background:#0d1117;border:1px solid #21262d;border-radius:5px;padding:6px 8px;margin-bottom:4px;font-size:10px">
+        <span style="font-weight:700;color:#c9d1d9">Volatile Market Scenario</span><span style="float:right;color:#7EC8F5;font-weight:700">84.7%</span>
+        <div style="font-size:9px;color:#8b949e;margin-top:2px">Client age 74, markets down 15% YTD, in-kind recommended…</div>
+      </div>
+      <div style="background:#0d1117;border:1px solid #21262d;border-radius:5px;padding:6px 8px;font-size:10px">
+        <span style="font-weight:700;color:#c9d1d9">RMD Calculation Method</span><span style="float:right;color:#7EC8F5;font-weight:700">71.3%</span>
+        <div style="font-size:9px;color:#8b949e;margin-top:2px">Age 75 = factor 24.6. $485,000 / 24.6 = $19,715…</div>
+      </div>`},
+  { title:"Augmented Prompt Sent to Phi-3", sub:"OllamaLLM.java → Ollama API :11434",
+    nodes:["rag","ollama"], edges:["wt-e5"], pkts:["wt-p6"], color:"#7EC8F5",
+    body:`<div class="wt-code" style="height:140px;overflow:hidden"><span class="wt-kw" style="color:#4ade80">System:</span> You are a helpful IRA RMD assistant.
+<span class="wt-kw" style="color:#a78bfa">Context:</span>
+[In-Kind Transfer Strategy]
+Transfer securities without selling...
+[Volatile Market Scenario]
+Client age 74, markets down 15%...
+[RMD Calculation Method]
+Age 75 = factor 24.6...
+<span class="wt-kw" style="color:#7EC8F5">Question:</span> My client is 75, markets are down — best strategy?</div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:4px 8px;font-size:9px"><span style="color:#484f58">model</span> <span style="color:#7EC8F5;font-weight:700">phi3</span></div>
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:4px 8px;font-size:9px"><span style="color:#484f58">temp</span> <span style="color:#7EC8F5;font-weight:700">0.3</span></div>
+        <div style="background:#0d1117;border:1px solid #21262d;border-radius:4px;padding:4px 8px;font-size:9px"><span style="color:#484f58">tokens</span> <span style="color:#7EC8F5;font-weight:700">256</span></div>
+      </div>`},
+  { title:"Phi-3 Generates the Answer", sub:"Local AI model — no data leaves your machine",
+    nodes:["ollama"], edges:[], pkts:[], color:"#7EC8F5",
+    body:`<div style="display:flex;align-items:center;gap:6px;padding:6px 0 10px">
+        <span class="wt-pdot"></span><span class="wt-pdot"></span><span class="wt-pdot"></span>
+        <span style="font-size:10px;color:#484f58">Generating…</span>
+      </div>
+      <div style="background:#0d1117;border:1px solid #21262d;border-radius:5px;padding:6px 10px;font-size:10px;margin-bottom:6px">
+        <span style="color:#4ade80">✓ Runs on CPU</span>&nbsp;&nbsp;
+        <span style="color:#4ade80">✓ Offline — no API key</span>&nbsp;&nbsp;
+        <span style="color:#4ade80">✓ HIPAA-friendly</span>
+      </div>
+      <div style="font-size:10px;color:#8b949e;line-height:1.7">Phi-3 3.8B — optimized for reasoning. RAG context anchors the response to your firm's actual knowledge documents, reducing hallucination.</div>`},
+  { title:"Answer Delivered · Audit Loop Closed", sub:"FA gets answer with citations · BA gets audit trail",
+    nodes:["ollama","spring","fa","audit","admin"], edges:["wt-e6","wt-e7","wt-e8","wt-e9"], pkts:["wt-p7","wt-p8","wt-p9","wt-p10"], color:"#4ade80",
+    body:`<div class="wt-answer">
+        Given volatile markets, recommend an <strong>in-kind transfer</strong> of $19,715 worth of ETF shares to the client's taxable brokerage account — no forced selling, RMD satisfied, market exposure preserved.
+        <div style="margin-top:6px"><span class="wt-cite">In-Kind Transfer Strategy</span><span class="wt-cite">Volatile Market Scenario</span><span class="wt-cite">RMD Calculation Method</span></div>
+      </div>
+      <div style="margin-top:8px;background:#0d1117;border:1px solid #21262d;border-radius:5px;padding:6px 8px;font-size:9px">
+        <span style="color:#484f58">Audit log:</span> <span style="color:#7EC8F5">query + top-3 docs recorded</span> — BA can review in Audit Log tab and add knowledge documents if retrieval was weak.
+      </div>`}
+];
+
+let wt_cur = 0, wt_playing = false, wt_timer = null;
+const WT_NODES = ["fa","spring","rag","kb","ollama","audit","admin"];
+
+function wt_render(i) {
+  const s = WT_STEPS[i];
+  document.getElementById('wt-snum').textContent = `Step ${i+1} of ${WT_STEPS.length}`;
+  document.getElementById('wt-stitle').textContent = s.title;
+  document.getElementById('wt-ssub').textContent = s.sub;
+  document.getElementById('wt-sbody').innerHTML = s.body;
+  // animate score bars
+  setTimeout(() => document.querySelectorAll('.wt-sb-fill').forEach(el => {
+    const w = el.style.width; el.style.width = '0'; setTimeout(() => el.style.width = w, 40);
+  }), 60);
+  // reset nodes
+  WT_NODES.forEach(n => {
+    const r = document.getElementById('wt-r-'+n);
+    if (r) { r.style.stroke = '#21262d'; r.style.filter = 'none'; }
+  });
+  // activate nodes
+  const c = s.color || '#7EC8F5';
+  s.nodes.forEach(n => {
+    const r = document.getElementById('wt-r-'+n);
+    if (r) { r.style.stroke = c; r.style.filter = `drop-shadow(0 0 6px ${c}50)`; }
+  });
+  // reset edges
+  document.querySelectorAll('[id^="wt-e"]').forEach(el => {
+    el.style.stroke = '#21262d'; el.style.strokeWidth = '1.4';
+    el.setAttribute('marker-end','url(#wt-arr)');
+  });
+  // highlight active edges
+  const mid = c === '#4ade80' ? 'wt-arr-g' : c === '#f59e0b' ? 'wt-arr-y' : c === '#a78bfa' ? 'wt-arr-p' : 'wt-arr-b';
+  s.edges.forEach(eid => {
+    const el = document.getElementById(eid);
+    if (el) { el.style.stroke = c; el.style.strokeWidth = '2'; el.setAttribute('marker-end',`url(#${mid})`); }
+  });
+  // stop all packets
+  document.querySelectorAll('[id^="wt-p"]').forEach(p => {
+    p.setAttribute('opacity','0');
+    const am = p.querySelector('animateMotion'); if (am) try { am.endElement(); } catch(e){}
+  });
+  // start active packets
+  s.pkts.forEach(pid => {
+    const p = document.getElementById(pid); if (!p) return;
+    p.setAttribute('opacity','1'); p.setAttribute('fill', c);
+    const am = p.querySelector('animateMotion'); if (am) try { am.beginElement(); } catch(e){}
+  });
+  // update dots
+  document.querySelectorAll('.wt-dot').forEach((d,j) => {
+    d.className = 'wt-dot' + (j < i ? ' done' : j === i ? ' active' : '');
+  });
+}
+
+function wt_buildDots() {
+  const c = document.getElementById('wt-dots'); if (!c) return;
+  WT_STEPS.forEach((_,i) => {
+    const d = document.createElement('div'); d.className = 'wt-dot';
+    d.title = WT_STEPS[i].title;
+    d.onclick = () => { wt_stopPlay(); wt_cur = i; wt_render(i); };
+    c.appendChild(d);
+  });
+}
+
+function wt_next() { if (wt_cur < WT_STEPS.length-1) { wt_cur++; wt_render(wt_cur); } else wt_stopPlay(); }
+function wt_prev() { if (wt_cur > 0) { wt_cur--; wt_render(wt_cur); } }
+
+function wt_toggle() { wt_playing ? wt_stopPlay() : wt_startPlay(); }
+function wt_startPlay() {
+  wt_playing = true;
+  const b = document.getElementById('wt-playbtn');
+  if (b) { b.textContent = '⏸ Pause'; b.style.background='#1a0505'; b.style.color='#f85149'; b.style.borderColor='#f8514940'; }
+  wt_schedule();
+}
+function wt_stopPlay() {
+  wt_playing = false; clearTimeout(wt_timer);
+  const b = document.getElementById('wt-playbtn');
+  if (b) { b.textContent = '▶ Play'; b.style.background='#0a2a0a'; b.style.color='#4ade80'; b.style.borderColor='#4ade8040'; }
+}
+function wt_schedule() {
+  if (!wt_playing) return;
+  wt_timer = setTimeout(() => {
+    if (wt_cur < WT_STEPS.length-1) { wt_cur++; wt_render(wt_cur); wt_schedule(); }
+    else wt_stopPlay();
+  }, 3200);
+}
+
+wt_buildDots();
+wt_render(0);
+</script>
+</body>
+</html>

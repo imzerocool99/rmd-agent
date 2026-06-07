@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import java.util.*;
 import java.util.LinkedHashMap;
 import com.rmd.logic.*;
-import com.rmd.llm.AzureLLM;
+import com.rmd.llm.OllamaLLM;
 import com.rmd.memory.MemoryService;
 import com.rmd.mcp.AlpacaMCP;
 import com.rmd.monitor.MonitorService;
@@ -25,7 +25,7 @@ public class MasterAgent {
 	@Autowired
 	PredictionService prediction;
 	@Autowired
-	AzureLLM llm;
+	OllamaLLM llm;
 	@Autowired
 	MemoryService memory;
 	@Autowired
@@ -123,11 +123,13 @@ public class MasterAgent {
 
 		monitor.log("Calculated RMD: " + rmd);
 
-		// Parse clientId format: "client_001/IRA-001-A" or plain "client_001"
-		String rawClientId = (String) ctx.getOrDefault("clientId", "default");
-		String[] parts    = rawClientId.split("/", 2);
-		String clientId   = parts[0];
-		String accountId  = parts.length > 1 ? parts[1] : "IRA-001-A";
+		// Parse clientId format: "client_001/IRA-001-A,IRA-001-B" or plain "client_001"
+		String rawClientId  = (String) ctx.getOrDefault("clientId", "default");
+		String[] parts      = rawClientId.split("/", 2);
+		String clientId     = parts[0];
+		String accountIdRaw = parts.length > 1 ? parts[1] : "IRA-001-A";
+		// Use first account as primary for strategy/label decisions
+		String accountId    = accountIdRaw.contains(",") ? accountIdRaw.split(",")[0] : accountIdRaw;
 		ctx.put("accountId", accountId);
 		ctx.put("accountLabel", accountLabelFor(accountId));
 
@@ -187,10 +189,15 @@ public class MasterAgent {
 			return Map.of("error", "limit_exceeded");
 		}
 
-		List<Map<String, Object>> portfolio = getPortfolioForAccount(accountId);
-		// Tag every asset with which account it belongs to
-		String acctLabel = accountLabelFor(accountId);
-		portfolio.forEach(a -> a.put("account", acctLabel));
+		// Merge portfolios for all selected accounts
+		List<Map<String, Object>> portfolio = new ArrayList<>();
+		String[] accountIds = accountIdRaw.split(",");
+		for (String aid : accountIds) {
+			String aLabel = accountLabelFor(aid.trim());
+			List<Map<String, Object>> acctPortfolio = getPortfolioForAccount(aid.trim());
+			acctPortfolio.forEach(a -> a.put("account", aLabel));
+			portfolio.addAll(acctPortfolio);
+		}
 
 		ctx.put("portfolio", portfolio);
 		List<Map<String, Object>> selectedAssets = assetSelector.selectAssetsForRMD(ctx);
@@ -411,6 +418,7 @@ public class MasterAgent {
 		response.put("portfolio",      ctx.get("portfolio"));
 		response.put("reinvestment",   reinvestment);
 		response.put("taxAnalysis",    taxAnalysis);
+		response.put("execution",      ctx.getOrDefault("execution", List.of()));
 
 		return response;
 

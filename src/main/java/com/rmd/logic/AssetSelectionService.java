@@ -49,70 +49,81 @@ public class AssetSelectionService {
 
 		double rmdAmount = Double.parseDouble(ctx.get("rmdAmount").toString());
 
-		// ✅ Step 1: score assets without mutating immutable maps
+		// Score assets — losses get high score (preferred), gains get low score
 		List<Map<String, Object>> scoredPortfolio = new ArrayList<>();
 		for (Map<String, Object> asset : portfolio) {
-
 			double gain = Double.parseDouble(asset.get("gain").toString());
-
-			double score = -gain; // prefer losses
 			Map<String, Object> assetCopy = new HashMap<>(asset);
-			assetCopy.put("score", score);
+			assetCopy.put("score", -gain);
 			scoredPortfolio.add(assetCopy);
 		}
 
-		// Descending — highest score (biggest loss) sold first
-		scoredPortfolio.sort((a, b) -> Double.compare((double) b.get("score"), (double) a.get("score")));
+		// Split into loss assets and gain assets
+		List<Map<String, Object>> lossAssets = new ArrayList<>();
+		List<Map<String, Object>> gainAssets = new ArrayList<>();
+		for (Map<String, Object> a : scoredPortfolio) {
+			double gain = Double.parseDouble(a.get("gain").toString());
+			if (gain <= 0) lossAssets.add(a);
+			else           gainAssets.add(a);
+		}
+		// Loss assets: biggest loss first (tax-loss harvesting)
+		lossAssets.sort((a, b) -> Double.compare((double) b.get("score"), (double) a.get("score")));
+		// Gain assets: highest gain first (best QCD/IK candidates)
+		gainAssets.sort((a, b) -> Double.compare(
+			Double.parseDouble(b.get("gain").toString()),
+			Double.parseDouble(a.get("gain").toString())));
+
+		// Phase 1: loss assets cover 70% of RMD (tax-loss harvesting floor)
+		// Phase 2: gain assets cover the remaining 30% (QCD / In-Kind candidates)
+		double lossQuota = rmdAmount * 0.70;
+		double gainQuota = rmdAmount * 0.30;
 
 		List<Map<String, Object>> selected = new ArrayList<>();
+		double lossRemaining = lossQuota;
+		double gainRemaining = rmdAmount; // full remaining after losses settle
 
-		double remaining = rmdAmount;
-
-		// ✅ Step 2: allocate exact quantities
-		for (Map<String, Object> asset : scoredPortfolio) {
-
-			double price = Double.parseDouble(asset.get("price").toString());
-			int availableQty = Integer.parseInt(asset.get("qty").toString());
-
-			// ✅ how many shares needed
-			int qtyToSell = (int) Math.min(availableQty, Math.floor(remaining / price));
-
+		// Phase 1 — loss assets
+		for (Map<String, Object> asset : lossAssets) {
+			if (lossRemaining <= 0) break;
+			double price      = Double.parseDouble(asset.get("price").toString());
+			int availableQty  = Integer.parseInt(asset.get("qty").toString());
+			int qtyToSell     = (int) Math.min(availableQty, Math.floor(lossRemaining / price));
 			if (qtyToSell > 0) {
-
-				Map<String, Object> trade = new HashMap<>();
-				trade.put("symbol",     asset.get("symbol"));
-				trade.put("qty",        qtyToSell);
-				trade.put("price",      price);
-				trade.put("value",      qtyToSell * price);
-				trade.put("gain",       asset.get("gain"));
-				trade.put("assetClass", asset.get("assetClass"));
-				trade.put("account",    asset.get("account"));
-
+				Map<String, Object> trade = buildTrade(asset, qtyToSell, price);
 				selected.add(trade);
-
-				remaining -= qtyToSell * price;
-			}
-
-			// ✅ stop when RMD met
-			if (remaining <= 0) {
-				break;
+				lossRemaining  -= qtyToSell * price;
+				gainRemaining  -= qtyToSell * price;
 			}
 		}
 
-		// ✅ Optional: small remainder handling
-		if (remaining > 0) {
-			Map<String, Object> fallback = scoredPortfolio.get(0);
-			Map<String, Object> fb = new HashMap<>();
-			fb.put("symbol",     fallback.get("symbol"));
-			fb.put("qty",        1);
-			fb.put("price",      fallback.get("price"));
-			fb.put("value",      fallback.get("price"));
-			fb.put("gain",       fallback.get("gain"));
-			fb.put("assetClass", fallback.get("assetClass"));
-			fb.put("account",    fallback.get("account"));
-			selected.add(fb);
+		// Phase 2 — gain assets fill the rest (target gainQuota, but use full remaining)
+		double gainFill = Math.max(gainQuota, gainRemaining);
+		for (Map<String, Object> asset : gainAssets) {
+			if (gainFill <= 0) break;
+			double price     = Double.parseDouble(asset.get("price").toString());
+			int availableQty = Integer.parseInt(asset.get("qty").toString());
+			int qtyToSell    = (int) Math.min(availableQty, Math.floor(gainFill / price));
+			if (qtyToSell <= 0) qtyToSell = 1; // always include at least 1 share of top gain assets
+			qtyToSell = Math.min(qtyToSell, availableQty);
+			if (qtyToSell > 0) {
+				Map<String, Object> trade = buildTrade(asset, qtyToSell, price);
+				selected.add(trade);
+				gainFill -= qtyToSell * price;
+			}
 		}
 
 		return selected;
+	}
+
+	private Map<String, Object> buildTrade(Map<String, Object> asset, int qty, double price) {
+		Map<String, Object> trade = new HashMap<>();
+		trade.put("symbol",     asset.get("symbol"));
+		trade.put("qty",        qty);
+		trade.put("price",      price);
+		trade.put("value",      qty * price);
+		trade.put("gain",       asset.get("gain"));
+		trade.put("assetClass", asset.get("assetClass"));
+		trade.put("account",    asset.get("account"));
+		return trade;
 	}
 }

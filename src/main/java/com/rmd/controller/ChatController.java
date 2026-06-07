@@ -1,6 +1,6 @@
 package com.rmd.controller;
 
-import com.rmd.llm.AzureLLM;
+import com.rmd.llm.OllamaLLM;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
@@ -11,7 +11,7 @@ import java.util.Map;
 public class ChatController {
 
     @Autowired
-    private AzureLLM llm;
+    private OllamaLLM llm;
 
     @PostMapping("/chat")
     public Map<String, String> chat(@RequestBody Map<String, String> req) {
