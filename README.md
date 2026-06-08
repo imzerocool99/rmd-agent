@@ -179,10 +179,10 @@ src/main/java/com/rmd/
 | Framework | Spring Boot 3.2.5 | Free |
 | Build | Apache Maven 3.9.6 | Free |
 | AI / LLM | Ollama + Phi-3 (local) | Free |
-| Trading API | Alpaca Paper Trading | Free |
+| Trading Platform | Alpaca Paper Trading | Free |
 | Package Manager | winget | Free |
 
-**Total cost: $0**
+**Total cost: $0**3rs34562
 
 ---
 
